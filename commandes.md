@@ -35,3 +35,11 @@ eas build --local --profile development --platform ios
 supabase functions new push
 supabase secrets set --env-file ./supabase/.env
 supabase functions deploy
+
+// update :
+
+eas update --branch main --message "update de test sur l'app"
+
+eas build -p android --profile preview
+
+eas build --platform android
