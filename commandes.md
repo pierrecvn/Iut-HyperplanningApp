@@ -43,3 +43,5 @@ eas update --branch main --message "update de test sur l'app"
 eas build -p android --profile preview
 
 eas build --platform android
+local :
+eas build --platform android --local

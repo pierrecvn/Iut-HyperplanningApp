@@ -2,14 +2,14 @@
 	"expo": {
 		"name": "Iut-HyperplanningApp",
 		"slug": "Iut-HyperplanningApp",
-		"version": "1.0.0",
+		"version": "1.0.2",
 		"orientation": "portrait",
 		"icon": "./assets/images/icon.png",
-		"scheme": "myapp",
+		"scheme": "iuthyperplanningapp",
 		"userInterfaceStyle": "automatic",
 		"splash": {
 			"image": "./assets/images/splash.png",
-			"resizeMode": "contain",
+			"resizeMode": "cover",
 			"backgroundColor": "#ffffff"
 		},
 		"ios": {
