@@ -2,7 +2,7 @@
 	"expo": {
 		"name": "Iut-HyperplanningApp",
 		"slug": "Iut-HyperplanningApp",
-		"version": "1.0.2",
+		"version": "1.0.4",
 		"orientation": "portrait",
 		"icon": "./assets/images/icon.png",
 		"scheme": "iuthyperplanningapp",
@@ -10,7 +10,7 @@
 		"splash": {
 			"image": "./assets/images/splash.png",
 			"resizeMode": "cover",
-			"backgroundColor": "#ffffff"
+			"backgroundColor": "#FFFFFF"
 		},
 		"ios": {
 			"supportsTablet": true,
@@ -19,9 +19,25 @@
 		"android": {
 			"adaptiveIcon": {
 				"foregroundImage": "./assets/images/adaptive-icon.png",
-				"backgroundColor": "#ffffff"
+				"backgroundColor": "#FFFFFF"
 			},
-			"package": "fr.sajima.IutHyperplanningApp"
+			"package": "fr.sajima.IutHyperplanningApp",
+			"softwareKeyboardLayoutMode": "pan",
+			"statusBar": {
+				"backgroundColor": "transparent",
+				"translucent": true,
+				"barStyle": "dark-content"
+			},
+			"navigationBar": {
+				"backgroundColor": "transparent",
+				"barStyle": "dark-content"
+			},
+			"permissions": [
+				"RECEIVE_BOOT_COMPLETED",
+				"SCHEDULE_EXACT_ALARM",
+				"USE_EXACT_ALARM",
+				"POST_NOTIFICATIONS"
+			]
 		},
 		"web": {
 			"bundler": "metro",
@@ -30,7 +46,9 @@
 		},
 		"plugins": [
 			"expo-router",
-			"expo-secure-store"
+			"expo-secure-store",
+			"expo-navigation-bar",
+			"expo-font"
 		],
 		"experiments": {
 			"typedRoutes": true

@@ -1,13 +1,8 @@
-export interface ICalEvent {
-	type: string;
-	summary: string;
-	description: string;
-	start: Date;
-	end: Date;
-	location: string;
-}
+import { ICalEvent } from "@/interfaces/IcalEvent";
+import { fetchIcalEventsClass, fetchIcalEventsSalle } from "@/functions/hyperplanningIcal";
 
-interface EventsReponse {
+
+export interface EventsReponse {
 	group?: string;
 	salle?: string;
 	count: number;
@@ -25,7 +20,7 @@ const ApiError = (error: any): never => {
 	if (error.response) {
 		throw new Error(error.response.data?.error || 'Erreur serveur');
 	}
-	throw new Error('Erreur réseau');
+	throw new Error('Erreur réseau <3 ');
 };
 
 // Class HyperplanningApi
@@ -46,6 +41,7 @@ export class HyperplanningApi {
 		try {
 			const response = await fetch(`${API_BASE_URL}/class/${group}`);
 			if (!response.ok) {
+
 				const errorData: ApiError = await response.json();
 				throw new Error(errorData.error);
 			}
@@ -62,6 +58,17 @@ export class HyperplanningApi {
 		} catch (error) {
 			return ApiError(error);
 		}
+	}
+
+	static async getClassAPI(group: string): Promise<ICalEvent[]> {
+
+		return fetchIcalEventsClass(group);
+
+	}
+
+	static async getSalleAPI(salle: string): Promise<ICalEvent[]> {
+
+		return fetchIcalEventsSalle(salle);
 	}
 
 	// Récupère l'emploi du temps d'une salle
@@ -82,24 +89,6 @@ export class HyperplanningApi {
 			}));
 
 			return data;
-		} catch (error) {
-			return ApiError(error);
-		}
-	}
-
-	// Récupère les événements du jour depuis l'emploi du temps global
-	static async getClassAujourdhui(group: string): Promise<EventsReponse> {
-		try {
-			const response = await this.getClass(group);
-			const ajd = new Date();
-			const events = response.events.filter(event => {
-
-				return event.start.getDate() === ajd.getDate()
-					&& event.start.getMonth() === ajd.getMonth()
-					&& event.start.getFullYear() === ajd.getFullYear();
-			});
-			return { ...response, events };
-
 		} catch (error) {
 			return ApiError(error);
 		}

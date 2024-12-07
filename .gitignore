@@ -12,7 +12,7 @@ web-build/
 android
 ios
 
-
+build-*.apk
 
 # macOS
 .DS_Store
