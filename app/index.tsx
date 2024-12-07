@@ -1,5 +1,9 @@
-import React from "react";
+import React, {useEffect} from "react";
 import { Dimensions, StyleSheet, View, Image } from "react-native";
+import * as Notifications from "expo-notifications";
+import {useAuth} from "@/context/AuthContext";
+import {useEdt} from "@/context/EdtContext";
+import {NotificationService} from "@/functions/NotificationService";
 
 export default function Index() {
 	const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
@@ -14,9 +18,10 @@ export default function Index() {
 		image: {
 			width: '100%',
 			height: '100%',
-			resizeMode: 'contain', // Ajuste l'image pour qu'elle soit entièrement visible
+			resizeMode: 'cover'
 		}
 	});
+
 
 	return (
 		<View style={styles.container}>

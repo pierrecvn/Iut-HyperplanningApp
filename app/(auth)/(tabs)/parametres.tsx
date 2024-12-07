@@ -4,7 +4,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useEdt } from "@/context/EdtContext";
 import { useTheme } from '@/context/ThemeContext';
 import { UserData } from "@/interfaces/UserData";
-import {removeUserAllData} from "@/functions/supabase";
+import {getNotificationStatus, removeUserAllData, saveNotificationStatus} from "@/functions/supabase";
 import groupInfo from '@/functions/utils/edtInfo.json';
 import packageJson from '@/package.json';
 import { Ionicons } from "@expo/vector-icons";
@@ -43,31 +43,58 @@ const Page = () => {
 	const [scheduledNotifications, setScheduledNotifications] = useState([]);
 
 	useEffect(() => {
-		const checkNotificationStatus = async () => {
-			const { status } = await Notifications.getPermissionsAsync();
-			setNotificationStatus(status === 'granted');
+		const initializeNotifications = async () => {
+			try {
 
-			const scheduled = await Notifications.getAllScheduledNotificationsAsync();
-			setScheduledNotifications(scheduled as never[]);
+				const { status } = await Notifications.getPermissionsAsync();
+				const storedStatus = getNotificationStatus();
+				const isNotificationEnabled = status === 'granted' && storedStatus;
+
+				// console.log('Notification status:', {
+				// 	systemStatus: status,
+				// 	storedStatus,
+				// 	finalStatus: isNotificationEnabled
+				// });
+
+				setNotificationStatus(isNotificationEnabled);
+
+				const scheduled = await Notifications.getAllScheduledNotificationsAsync();
+				setScheduledNotifications(scheduled as never[]);
+
+				if (isNotificationEnabled  && scheduled.length === 0) {
+					const permission = await NotificationService.initNotifications();
+					if (permission && data?.rappel) {
+						await NotificationService.planifierNotificationsEvents(allEvents, data.rappel);
+					}
+				}
+			} catch (error) {
+				console.error('Error initializing notifications:', error);
+			}
 		};
 
-		checkNotificationStatus();
-	}, []);
+		initializeNotifications();
+	}, [data?.rappel, allEvents]);
 
 	const handleNotificationToggle = async () => {
-		if (notificationStatus) {
-			await Notifications.cancelAllScheduledNotificationsAsync();
-			setScheduledNotifications([]);
-		} else {
+		const newStatus = !notificationStatus;
+
+		if (newStatus) {
 			const permission = await NotificationService.initNotifications();
 			if (permission && data?.rappel) {
 				await NotificationService.planifierNotificationsEvents(allEvents, data.rappel);
 				const scheduled = await NotificationService.getNotificationsPlanifiees();
 				setScheduledNotifications(scheduled as never);
 			}
+		} else {
+			await Notifications.cancelAllScheduledNotificationsAsync();
+			setScheduledNotifications([]);
 		}
-		setNotificationStatus(!notificationStatus);
+
+		setNotificationStatus(newStatus);
+		await saveNotificationStatus(newStatus);
 	};
+
+
 
 
 	useEffect(() => {
@@ -108,7 +135,14 @@ const Page = () => {
 		setRappel(selectedRappel);
 		setActiveModal(null);
 		await saveRappelSupabase(selectedRappel);
+
+		if (notificationStatus) {
+			await NotificationService.planifierNotificationsEvents(allEvents, selectedRappel);
+			const scheduled = await NotificationService.getNotificationsPlanifiees();
+			setScheduledNotifications(scheduled as never);
+		}
 	}
+
 
 	return (
 		<SafeAreaView style={[styles.container, {
@@ -132,7 +166,7 @@ const Page = () => {
 					<SettingItem
 						icon="notifications-outline"
 						title="Activer les notifications"
-						description={`${scheduledNotifications.length} notifications planifiées`}
+						description={notificationStatus ? `Vous avez ${scheduledNotifications.length} notifications planifiées` : `Activer les notifications pour recevoir des rappels ${rappel} minutes avant vos cours`}
 						value={notificationStatus}
 						onValueChange={handleNotificationToggle}
 						controlType="switch"

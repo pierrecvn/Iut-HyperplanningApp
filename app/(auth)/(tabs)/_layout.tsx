@@ -84,7 +84,7 @@ const Layout = () => {
 							<Ionicons name="business-outline" size={26} color={color}/>
 						</View>
 					),
-					header: () => <CustomHeader title="Alerte"/>,
+					header: () => <CustomHeader title="Salle"/>,
 					headerTransparent: true,
 				}}
 			/>

@@ -49,9 +49,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({children}
 		}
 	}, []);
 
-	// useEffect(() => {
-	// 	checkUser();
-	// }, [checkUser]);
+	useEffect(() => {
+		checkUser();
+	}, [checkUser]);
 
 	const connexion = async () => {
 

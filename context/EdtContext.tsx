@@ -24,7 +24,7 @@ interface EdtProviderProps {
 }
 
 export const EdtProvider = ({ children }: EdtProviderProps) => {
-	const { user, recupDataUtilisateur } = useAuth();
+	const { user} = useAuth();
 	const [allEvents, setAllEvents] = useState<ICalEvent[]>([]);
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
@@ -34,7 +34,6 @@ export const EdtProvider = ({ children }: EdtProviderProps) => {
 
 	const loadEdt = async (groupe?: string) => {
 
-		// console.log('loadEdt');
 		try {
 			setLoading(true);
 			setError(null);
@@ -50,31 +49,33 @@ export const EdtProvider = ({ children }: EdtProviderProps) => {
 
 			} else {
 				if (userData?.group) {
+					// console.log("Groupe : ", userData?.group);
 					const response = await HyperplanningApi.getClass(userData.group);
 
 					// fakeevent
 					// let testEvent = { ...response.events[152] };
 					// let futureDate = new Date();
-					// futureDate.setMinutes(futureDate.getMinutes() + 6);
+					// futureDate.setMinutes(futureDate.getMinutes() + 16);
 					// testEvent.start = futureDate;
 					//
 					// let futureEndDate = new Date(futureDate);
 					// futureEndDate.setMinutes(futureEndDate.getMinutes() + 60);
 					// testEvent.end = futureEndDate;
 					// response.events.push(testEvent);
-
+					//
 					// // un deuxième mais dans 1h
 					// let testEvent2 = { ...response.events[152] };
 					// let futureDate2 = new Date();
 					// futureDate2.setMinutes(futureDate2.getMinutes() + 60);
 					// testEvent2.start = futureDate2;
-
+					//
 					// let futureEndDate2 = new Date(futureDate2);
 					// futureEndDate2.setMinutes(futureEndDate2.getMinutes() + 60);
 					// testEvent2.end = futureEndDate2;
 					// response.events.push(testEvent2);
 
 					setAllEvents(response.events);
+
 				}
 			}
 
