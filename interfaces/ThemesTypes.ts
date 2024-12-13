@@ -22,6 +22,7 @@ export interface ThemeColors {
 }
 
 export interface Theme {
+	name: string;
 	bg: ThemeBg;
 	text: ThemeText;
 	colors: ThemeColors;
@@ -35,4 +36,6 @@ export interface ThemeContextType {
 	toggleTheme: () => void;
 	useSystemTheme: () => void;
 	isSystemTheme: boolean;
+	useRandomTheme: () => void;
+	isRandomTheme: boolean;
 }

@@ -177,7 +177,7 @@ const Page = () => {
 			</View>
 
 			<CustomModal
-				visible={activeModal === 'calendar'}
+					visible={activeModal === 'calendar'}
 				onClose={closeModal}
 				backgroundColor={theme.bg.base}
 				primaryColor={theme.colors.primary}
@@ -224,6 +224,9 @@ const Page = () => {
 				headerTitle={isInitialGroupSelection ? "⚠️ Définir le groupe par défaut ⚠️" : "Sélection du groupe"}
 				renderContent={() => (
 					<FlatList
+						contentContainerStyle={{
+							paddingBottom: screenHeight * 0.1,
+						}}
 						data={Object.keys(groupInfo)}
 						keyExtractor={(item) => item}
 						renderItem={({ item, index }) => (

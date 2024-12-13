@@ -37,11 +37,15 @@ const HeaderAnimation = () => {
 			viewCustom={
 			<View style={{ flexDirection: 'row', alignItems: 'center' }}>
 				<Text style={{ color: theme.text.base, fontWeight: '900', fontSize: 30, fontFamily: 'Inter', fontStyle: 'normal' }}>
-					Salut {discordName}
+					Salut {discordName + " "}
+				</Text>
+				<Text style={{ color: theme.text.base, fontWeight: '900', fontSize: 30, fontFamily: 'Inter', fontStyle: 'normal' }}>
+					( {user?.group} )
 				</Text>
 				<Animated.Text style={{ opacity: emojiOpacity, fontSize: 20, paddingLeft: 5 }}>
 					👋
 				</Animated.Text>
+
 			</View>
 			}/>
 	);

@@ -39,11 +39,11 @@ const CustomHeader = ({title, viewCustom}: HeaderProps) => {
 					fontStyle: 'normal'
 				}}>{title}</Text>}
 
-				<Link href={'/(auth)/notifications'} asChild>
-					<TouchableOpacity>
-						<MaterialIcons name="notifications-none" size={32} color={theme.text.base}/>
-					</TouchableOpacity>
-				</Link>
+				{/*<Link href={'/(auth)/notifications'} asChild>*/}
+				{/*	<TouchableOpacity>*/}
+				{/*		<MaterialIcons name="notifications-none" size={32} color={theme.text.base}/>*/}
+				{/*	</TouchableOpacity>*/}
+				{/*</Link>*/}
 				{/*<TouchableOpacity onPress={ () => {*/}
 
 				{/*	console.log(supabase.rpc('trie_par_groupe', { groupe: 'F' }).then(response => {*/}

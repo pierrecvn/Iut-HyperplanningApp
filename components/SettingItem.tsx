@@ -93,11 +93,28 @@ const SettingItem = ({
 	};
 
 	return (
-		<View
+		<TouchableOpacity
 			style={[
 				styles.settingItem,
 				{opacity}
 			]}
+			onPress={() => {
+				switch (controlType) {
+					case 'switch':
+						handleValueChange(!value);
+						break;
+					case 'button':
+						onPress?.();
+						break;
+					case 'icon':
+						onPress?.();
+						break;
+					default:
+						break;
+				}
+			}
+				}
+			activeOpacity={0.8}
 		>
 			<Ionicons
 				name={icon}
@@ -129,7 +146,7 @@ const SettingItem = ({
 			<View style={styles.controlContainer}>
 				{renderControl()}
 			</View>
-		</View>
+		</TouchableOpacity>
 	);
 };
 

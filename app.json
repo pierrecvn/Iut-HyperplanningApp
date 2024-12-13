@@ -2,7 +2,7 @@
 	"expo": {
 		"name": "Iut-HyperplanningApp",
 		"slug": "Iut-HyperplanningApp",
-		"version": "1.0.4",
+		"version": "1.1.5",
 		"orientation": "portrait",
 		"icon": "./assets/images/icon.png",
 		"scheme": "iuthyperplanningapp",
@@ -23,15 +23,6 @@
 			},
 			"package": "fr.sajima.IutHyperplanningApp",
 			"softwareKeyboardLayoutMode": "pan",
-			"statusBar": {
-				"backgroundColor": "transparent",
-				"translucent": true,
-				"barStyle": "dark-content"
-			},
-			"navigationBar": {
-				"backgroundColor": "transparent",
-				"barStyle": "dark-content"
-			},
 			"permissions": [
 				"RECEIVE_BOOT_COMPLETED",
 				"SCHEDULE_EXACT_ALARM",

@@ -17,18 +17,21 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import {NotificationService} from "@/functions/NotificationService";
 import * as Notifications from "expo-notifications";
 import {useBottomTabBarHeight} from "@react-navigation/bottom-tabs";
+import dayjs from 'dayjs';
+import 'dayjs/locale/fr';
+dayjs.locale('fr');
 
 const { height: screenHeight } = Dimensions.get('window');
 
 
-type ModalType = 'group' | 'calendar' | 'info' | 'rappel' | null;
+type ModalType = 'group' | 'calendar' | 'info' | 'rappel' | 'warning' | null;
 
 const Page = () => {
 	const insets = useSafeAreaInsets();
 	const headerHeight = useHeaderHeight() - insets.top;
-	const { theme, isDark, toggleTheme, useSystemTheme, isSystemTheme } = useTheme();
+	const { theme, isDark, toggleTheme, useSystemTheme, isSystemTheme, useRandomTheme, isRandomTheme} = useTheme();
 	const BOTTOM_PADDING = useBottomTabBarHeight() - insets.bottom;
-	const { refreshEdt, allEvents} = useEdt()
+	const { defaultGroupEvents} = useEdt()
 
 	const { checkUser, connexion, deconnexion, loading, user, recupDataUtilisateur, saveGroupSupabase, saveRappelSupabase } = useAuth();
 	const { width: screenWidth } = Dimensions.get('window');
@@ -64,7 +67,7 @@ const Page = () => {
 				if (isNotificationEnabled  && scheduled.length === 0) {
 					const permission = await NotificationService.initNotifications();
 					if (permission && data?.rappel) {
-						await NotificationService.planifierNotificationsEvents(allEvents, data.rappel);
+						await NotificationService.planifierNotificationsEvents(defaultGroupEvents, data.rappel);
 					}
 				}
 			} catch (error) {
@@ -73,7 +76,7 @@ const Page = () => {
 		};
 
 		initializeNotifications();
-	}, [data?.rappel, allEvents]);
+	}, [data?.rappel, defaultGroupEvents]);
 
 	const handleNotificationToggle = async () => {
 		const newStatus = !notificationStatus;
@@ -81,7 +84,7 @@ const Page = () => {
 		if (newStatus) {
 			const permission = await NotificationService.initNotifications();
 			if (permission && data?.rappel) {
-				await NotificationService.planifierNotificationsEvents(allEvents, data.rappel);
+				await NotificationService.planifierNotificationsEvents(defaultGroupEvents, data.rappel);
 				const scheduled = await NotificationService.getNotificationsPlanifiees();
 				setScheduledNotifications(scheduled as never);
 			}
@@ -137,7 +140,7 @@ const Page = () => {
 		await saveRappelSupabase(selectedRappel);
 
 		if (notificationStatus) {
-			await NotificationService.planifierNotificationsEvents(allEvents, selectedRappel);
+			await NotificationService.planifierNotificationsEvents(defaultGroupEvents, selectedRappel);
 			const scheduled = await NotificationService.getNotificationsPlanifiees();
 			setScheduledNotifications(scheduled as never);
 		}
@@ -218,6 +221,16 @@ const Page = () => {
 						onValueChange={useSystemTheme}
 						controlType="switch"
 					/>
+					<SettingItem
+						icon="shuffle-outline"
+						title="Thème aléatoire"
+						description="Activer un thème choisi aléatoirement parmi les thèmes disponibles"
+						value={isRandomTheme}
+						onValueChange={useRandomTheme}
+						controlType="switch"
+					/>
+
+
 
 					<View style={styles.separator} />
 
@@ -274,18 +287,23 @@ const Page = () => {
 									</Text>
 								</View>
 							</View>
+
 							<Text style={[styles.settingDescription, { color: theme.text.secondary }]}>
 								Discord ID: {data?.sub}
 							</Text>
+
 							<Text style={[styles.settingDescription, { color: theme.text.secondary }]}>
 								Nombre de requêtes : {data?.api_requests_count}
 							</Text>
+
 							<Text style={[styles.settingDescription, { color: theme.text.secondary }]}>
-								Dernière connexion: {data?.updated_at}
+								Compte créé le: {data?.created_at ? dayjs(data.created_at).format('DD MMMM YYYY') : 'Inconnue'}
 							</Text>
+
 							<Text style={[styles.settingDescription, { color: theme.text.secondary }]}>
-								Compte créé le : {data?.created_at}
+								Dernière connexion: {data?.updated_at ? dayjs(data.updated_at).format('DD MMMM YYYY [à] HH:mm') : 'Inconnue'}
 							</Text>
+
 
 							<View style={styles.separator} />
 
@@ -294,13 +312,13 @@ const Page = () => {
 								title="Suppression totales des données"
 								description="Supprimer toutes vos données de l'application et de la base de donnée"
 								value={user ? true : false}
-								onValueChange={removeUserAllData}
+								// onValueChange={removeUserAllData}
+								onValueChange={() => setActiveModal('warning')}
 								controlType="icon"
 								rightIcon={'trash-outline'}
 								customStyle={{ color: theme.colors.danger }}
 								onPress={async () => {
-									await removeUserAllData();
-									deconnexion();
+									setActiveModal('warning');
 								}}
 							/>
 						</View>
@@ -318,6 +336,9 @@ const Page = () => {
 				headerTitle="⚠️ Changer le groupe par défaut ⚠️"
 				renderContent={() => (
 					<FlatList
+						contentContainerStyle={{
+							paddingBottom: screenHeight * 0.1,
+						}}
 						data={Object.keys(groupInfo)}
 						keyExtractor={(item) => item}
 						renderItem={({ item, index }) => (
@@ -462,6 +483,85 @@ const Page = () => {
 					</View>
 				)}
 			/>
+
+			<CustomModal
+				visible={activeModal === 'warning'}
+				onClose={() => setActiveModal(null)}
+				backgroundColor={theme.bg.base}
+				primaryColor="#4CAF50"
+				secondaryColor={theme.colors.danger}
+				headerTitle="Suppression totale des données"
+				renderContent={() => (
+					<View style={{
+						padding: 15,
+						backgroundColor: theme.bg.alarme,
+						borderRadius: 12
+					}}>
+						<View style={{
+							flexDirection: 'row',
+							alignItems: 'center',
+							marginBottom: 15
+						}}>
+							<Ionicons
+								name="warning-outline"
+								size={24}
+								color={theme.colors.danger}
+							/>
+							<Text style={[
+								styles.settingTitle,
+								{
+									color: theme.colors.danger,
+									marginLeft: 10
+								}
+							]}>
+								Suppression totale des données
+							</Text>
+						</View>
+
+						<View style={{
+							backgroundColor: theme.bg.base,
+							borderRadius: 10,
+							padding: 15
+						}}>
+							<Text style={[
+								styles.settingDescription,
+								{
+									color: theme.text.secondary,
+									marginBottom: 8
+								}
+							]}>
+								<Text>Êtes-vous sûr de vouloir supprimer toutes vos données ?</Text>
+							</Text>
+							<View style={styles.separator} />
+
+							<TouchableOpacity
+								style={{
+									backgroundColor: theme.colors.danger,
+									padding: 15,
+									borderRadius: 10,
+									alignItems: 'center',
+									justifyContent: 'center'
+								}}
+								onPress={async () => {
+									await removeUserAllData();
+									deconnexion();
+									setActiveModal(null);
+								}}
+							>
+								<Text style={{
+									color: theme.text.base,
+									fontWeight: 'bold'
+								}}>
+									Supprimer
+								</Text>
+							</TouchableOpacity>
+						</View>
+					</View>
+
+				)}
+			/>
+
+
 		</SafeAreaView>
 	);
 };

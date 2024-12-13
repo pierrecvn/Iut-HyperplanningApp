@@ -77,6 +77,7 @@ const CustomModal = ({
 		},
 	});
 
+
 	return (
 
 		<Modal visible={visible} transparent={true} onRequestClose={closeModal} animationType="fade">
@@ -118,9 +119,6 @@ const CustomModal = ({
 							>
 
 								<Ionicons name={'close-circle'}	size={24} color={primaryColor} />
-								{/*<Text style={[styles.closeButtonText, { color: primaryColor }]}>*/}
-								{/*	Fermer*/}
-								{/*</Text>*/}
 							</TouchableOpacity>
 						</View>
 					</View>
@@ -144,7 +142,7 @@ const styles = StyleSheet.create({
 		borderTopLeftRadius: 20,
 		borderTopRightRadius: 20,
 		padding: 20,
-		maxHeight: '80%',
+		maxHeight: Dimensions.get('window').height * 0.8,
 	},
 	modalHandle: {
 		width: 40,

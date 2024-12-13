@@ -3,6 +3,7 @@ import {createClient} from '@supabase/supabase-js';
 import {MMKV} from 'react-native-mmkv';
 import 'react-native-url-polyfill/auto';
 import {StateStorage} from 'zustand/middleware';
+import {Theme} from "@/interfaces/ThemesTypes";
 
 const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL ?? '';
 const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? '';
@@ -99,6 +100,10 @@ export const incrementation_nb_requete = async (id: string | undefined): Promise
 export const recupDataUtilisateur = async (): Promise<UserData | null> => {
 	try {
 		const {data: {user}, error: authError} = await supabase.auth.getUser();
+		// console.log(user);
+		// https://cdn.discordapp.com/banners/549274676849803305/95a0495c28af8aa242a4b836a191e22d.png?size=600
+		// 	https://cdn.discordapp.com/banners/549274676849803305/95a0495c28af8aa242a4b836a191e22d.png?size=600
+		// 	"https://cdn.discordapp.com/avatars/549274676849803305/1e7d4a02b164da62c7a8aa69046d434f.png
 		await incrementation_nb_requete(user?.id);
 
 		if (authError) throw authError;
@@ -211,5 +216,31 @@ export const getNotificationStatus = (): boolean => {
 	} catch (error) {
 		console.error(`Erreur lors de la récupération du statut des notifications : ${(error as Error).message}`);
 		return true;
+	}
+};
+/**
+ * Theme stockage
+ */
+
+export const saveTheme = async (theme_name: string) => {
+	try {
+		storage.set('theme_name_status', theme_name);
+
+		// console.log("Statut du thème sauvegardé avec succès.");
+
+	} catch (error) {
+		console.error(`Erreur lors de la sauvegarde du statut du thème : ${(error as Error).message}`);
+		return null;
+	}
+};
+
+// Récupération du statut du thème
+export const getTheme = (): String | null => {
+	try {
+		const theme_name = storage.getString('theme_name_status');
+		return theme_name ? theme_name : 'dark';
+	} catch (error) {
+		console.error(`Erreur lors de la récupération du statut du thème : ${(error as Error).message}`);
+		return null;
 	}
 };

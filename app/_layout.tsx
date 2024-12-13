@@ -39,9 +39,9 @@ const RootNavigator = () => {
 				headerShadowVisible: false,
 				headerLeft: () => (
 					<TouchableOpacity onPress={useRouter().back}>
-						<Ionicons name="arrow-back" size={34} color={"#fff"}/>
+						<Ionicons name="arrow-back" size={34} />
 					</TouchableOpacity>
-				),
+				)
 			}}/>
 			<Stack.Screen name="(auth)/(tabs)" options={{
 				headerShown: false,

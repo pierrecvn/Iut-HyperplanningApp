@@ -2,6 +2,7 @@ import { HyperplanningApi } from '@/functions/hyperplanning';
 import * as Updates from 'expo-updates';
 import React, { createContext, useContext, useState } from 'react';
 import { Alert } from 'react-native';
+import {useTheme} from "@/context/ThemeContext";
 
 interface UpdateContextType {
 	modalVisible: boolean;
@@ -17,69 +18,62 @@ export function UpdateProvider({ children }: { children: React.ReactNode }) {
 	const [modalVisible, setModalVisible] = useState(false);
 	const [updateStatus, setUpdateStatus] = useState('');
 	const [updateDetails, setUpdateDetails] = useState('');
-	// console.log('UpdateProvider');
 
 	const checkUpdatesAndApi = async () => {
 		try {
-			// console.log('checkUpdatesAndApi');
-			// setModalVisible(true);
-			// const dev = process.env.NODE_ENV === 'development';
-			//
-			// if (!dev) {
-			// 	setUpdateStatus('Recherche de mises à jour...');
-			// 	const update = await Updates.checkForUpdateAsync();
-			//
-			// 	if (update.isAvailable) {
-			// 		setUpdateStatus('Télechargement ...');
-			// 		setUpdateDetails('Une nouvelle mise à jour est disponible. \nVeillez patienter');
-			// 		await Updates.fetchUpdateAsync();
-			// 		setUpdateStatus('Rechargement...');
-			// 		await Updates.reloadAsync();
-			// 	} else {
-			// 		setUpdateStatus('Pas de nouvelles mise à jour');
-			// 		setUpdateDetails('Tout est parfait !');
-			// 		setTimeout(() => setModalVisible(false), 500);
-			// 	}
-			// } else {
-			// 	setUpdateStatus('Mode dev');
-			// 	setTimeout(() => setModalVisible(false), 200);
-			// }
-			//
-			// // Vérification de l'API
-			// try {
-			// 	setModalVisible(true);
-			// 	setUpdateStatus(`Vérification de l'api...`);
-			// 	setUpdateDetails('Veillez patienter');
-			// 	await HyperplanningApi.enVie();
-			// 	setTimeout(() => setModalVisible(false), 200);
-			// } catch (error: any) {
-			// 	setUpdateStatus(`Erreur avec l'api`);
-			// 	setUpdateDetails(error.message + " réessayer plus tard");
-			// }
+			// console.log('update');
+			setModalVisible(true);
+			const isDev = process.env.NODE_ENV === 'development';
 
-		} catch (error: any) {
+			if (!isDev) {
+				setUpdateStatus('Recherche de mises à jour...');
+
+				const update = await Updates.checkForUpdateAsync();
+				if (update.isAvailable) {
+					setUpdateStatus('Téléchargement en cours...');
+					setUpdateDetails('Une nouvelle mise à jour est disponible. Veuillez patienter.');
+					setTimeout(() => setModalVisible(true), 500);
+					await Updates.fetchUpdateAsync();
+					setUpdateStatus('Rechargement de l\'application...');
+					await Updates.reloadAsync();
+				} else {
+					setUpdateStatus('Aucune nouvelle mise à jour disponible.');
+					setUpdateDetails('Tout est à jour !');
+					setModalVisible(false);
+				}
+			} else {
+				console.log('Mode développement actif.');
+				setUpdateStatus('Mode développement actif.');
+				setModalVisible(false);
+			}
 			setModalVisible(false);
-			Alert.alert(`Error`, error.message);
+		} catch (error: any) {
+			console.error(error);
+			setUpdateStatus('Erreur détectée.');
+			setUpdateDetails(error.message || 'Une erreur est survenue (Réseau), veuillez réessayer plus tard.');
+			setTimeout(() => setModalVisible(false), 4000);
 		}
 	};
 
 	return (
-		<UpdateContext.Provider value={{
-			modalVisible,
-			updateStatus,
-			updateDetails,
-			checkUpdatesAndApi,
-			setModalVisible
-		}}>
+		<UpdateContext.Provider
+			value={{
+				modalVisible,
+				updateStatus,
+				updateDetails,
+				checkUpdatesAndApi,
+				setModalVisible,
+			}}
+		>
 			{children}
 		</UpdateContext.Provider>
 	);
-};
+}
 
 export const useUpdate = () => {
 	const context = useContext(UpdateContext);
 	if (!context) {
-		throw new Error('useUpdate ne peut être utilisé qu\'à l\'intérieur de UpdateProvider');
+		throw new Error("useUpdate ne peut être utilisé qu'à l'intérieur de UpdateProvider.");
 	}
 	return context;
 };

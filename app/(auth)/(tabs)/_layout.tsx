@@ -72,22 +72,22 @@ const Layout = () => {
 				}}
 			/>
 
-			<Tabs.Screen
-				name="salle"
-				options={{
-					title: 'salle',
-					tabBarIcon: ({size, color, focused}) => (
-						<View style={styles.iconContainer}>
-							{focused && (
-								<View style={[styles.focusBg, {backgroundColor: theme.bg.tabBarActive}]}/>
-							)}
-							<Ionicons name="business-outline" size={26} color={color}/>
-						</View>
-					),
-					header: () => <CustomHeader title="Salle"/>,
-					headerTransparent: true,
-				}}
-			/>
+			{/*<Tabs.Screen*/}
+			{/*	name="salle"*/}
+			{/*	options={{*/}
+			{/*		title: 'salle',*/}
+			{/*		tabBarIcon: ({size, color, focused}) => (*/}
+			{/*			<View style={styles.iconContainer}>*/}
+			{/*				{focused && (*/}
+			{/*					<View style={[styles.focusBg, {backgroundColor: theme.bg.tabBarActive}]}/>*/}
+			{/*				)}*/}
+			{/*				<Ionicons name="business-outline" size={26} color={color}/>*/}
+			{/*			</View>*/}
+			{/*		),*/}
+			{/*		header: () => <CustomHeader title="Salle"/>,*/}
+			{/*		headerTransparent: true,*/}
+			{/*	}}*/}
+			{/*/>*/}
 
 			<Tabs.Screen
 				name="parametres"

@@ -41,6 +41,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({children}
 		try {
 			const data = await recupDataUtilisateur();
 			if (data?.sub) {
+				console.log(data);
 				await setUserData(data);
 				setUser(data as UserData);
 			}
@@ -59,12 +60,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({children}
 			const redirectUrl = 'iuthyperplanningapp://(auth)/(tabs)/home';
 			const {data, error} = await supabase.auth.signInWithOAuth({
 				provider: 'discord',
+				// scopes: '?options=identify+email+connections+guilds',
 				options: {redirectTo: redirectUrl},
 			});
 
 			if (error) throw error;
 
 			if (data?.url) {
+				console.log(data);
 				const result = await WebBrowser.openAuthSessionAsync(data.url, redirectUrl);
 
 				if (result.type === 'success') {

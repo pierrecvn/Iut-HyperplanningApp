@@ -75,6 +75,13 @@ export default function Index() {
 			textAlign: 'center',
 			fontFamily: "Inter-Regular",
 			paddingHorizontal: 10,
+		},
+		minilabel: {
+			fontSize: Math.min(9, screenWidth * 0.04),
+			color: theme.colors.danger,
+			textAlign: 'center',
+			fontFamily: "Inter-Regular",
+			paddingHorizontal: 10,
 		}
 	});
 
@@ -102,12 +109,17 @@ export default function Index() {
 							<Text style={styles.label}>
 								Connectez-vous avec discord pour afficher votre emploi du temps en temps réel
 							</Text>
+
 							<RoundBtn
 								hasIcon={false}
 								icon="logo-discord"
 								text="Connexion avec Discord"
 								onPress={connexion}
 							/>
+							<Text style={styles.minilabel}>
+								Toutes informations stockées pourront être supprimées à tout moment dans les paramètres de l'application,
+								aucunes informations ne seront partagées à des tiers.
+							</Text>
 						</View>
 					</View>
 				</View>
