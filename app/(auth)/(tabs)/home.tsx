@@ -84,7 +84,7 @@ const Page = () => {
 			]}
 		>
 			{renderEventInfo()}
-			<EventList nb={"3"} estUnique={true}/>
+			<EventList nb={"4"} estUnique={true}/>
 		</SafeAreaView>
 	);
 };
