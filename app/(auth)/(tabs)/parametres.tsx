@@ -1,10 +1,11 @@
 import CustomModal from '@/components/CustomModal';
+import CasLoginModal from '@/components/CasLoginModal';
 import SettingItem from "@/components/SettingItem";
 import { useAuth } from '@/context/AuthContext';
 import { useEdt } from "@/context/EdtContext";
 import { useTheme } from '@/context/ThemeContext';
 import { NotificationService } from "@/functions/NotificationService";
-import { getNotificationStatus, removeUserAllData, saveNotificationStatus } from "@/functions/supabase";
+import { getNotificationStatus, removeUserAllData, saveNotificationStatus, getPersonalIcalUrl } from "@/functions/supabase";
 import groupInfo from '@/functions/utils/edtInfo.json';
 import { UserData } from "@/interfaces/UserData";
 import packageJson from '@/package.json';
@@ -15,7 +16,7 @@ import dayjs from 'dayjs';
 import 'dayjs/locale/fr';
 import * as Notifications from "expo-notifications";
 import React, { useEffect, useState } from 'react';
-import { Dimensions, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Dimensions, Image, StyleSheet, Text, TouchableOpacity, View, Alert } from 'react-native';
 import { FlatList, ScrollView, } from 'react-native-gesture-handler';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -44,6 +45,25 @@ const Page = () => {
     const [griette, setGriette] = useState(false);
     const [notificationStatus, setNotificationStatus] = useState(false);
     const [scheduledNotifications, setScheduledNotifications] = useState([]);
+
+    // États pour le login CAS via WebView
+    const [casModalVisible, setCasModalVisible] = useState(false);
+    // Stocker l'URL perso séparément pour pouvoir y revenir
+    const [persoGroupUrl, setPersoGroupUrl] = useState<string | null>(null);
+
+    const handleCasSuccess = async (url: string) => {
+        // On sauvegarde l'URL comme si c'était un "groupe"
+        await handleGroupSelection(url);
+        setPersoGroupUrl(url); // On garde en mémoire locale
+        Alert.alert("Succès", "Votre emploi du temps personnel a été récupéré et configuré !");
+    };
+
+    // Helper pour afficher le nom du groupe proprement
+    const getGroupDisplayName = (grp: string) => {
+        if (!grp) return "Sélectionner un groupe";
+        if (grp.startsWith('http')) return "Mon Planning (Perso)";
+        return grp;
+    };
 
     useEffect(() => {
         const initializeNotifications = async () => {
@@ -105,6 +125,13 @@ const Page = () => {
             try {
                 const data = user;
                 setData(data);
+
+                // Initialiser l'URL perso stockée
+                const storedPersoUrl = getPersonalIcalUrl();
+                if (storedPersoUrl) {
+                    setPersoGroupUrl(storedPersoUrl);
+                }
+
                 // group
                 if (data?.group == null) {
                     setActiveModal('group');
@@ -226,9 +253,19 @@ const Page = () => {
                     minWidth: screenWidth * 0.9
                 }]}>
                     <SettingItem
+                        icon="school-outline"
+                        title="Connexion Université (Auto)"
+                        description="Récupérer automatiquement mon planning perso"
+                        onPress={() => setCasModalVisible(true)}
+                        controlType="button"
+                    />
+
+                    <View style={styles.separator} />
+
+                    <SettingItem
                         icon="people-outline"
                         title="Groupe par défaut"
-                        description={group || "Sélectionner un groupe"}
+                        description={getGroupDisplayName(group)}
                         onPress={() => setActiveModal('group')}
                         controlType="button"
                     />
@@ -320,6 +357,12 @@ const Page = () => {
                 </View>
             </ScrollView>
 
+            <CasLoginModal
+                visible={casModalVisible}
+                onClose={() => setCasModalVisible(false)}
+                onSuccess={handleCasSuccess}
+                theme={theme}
+            />
 
             <CustomModal
                 visible={activeModal === 'group'}
@@ -328,30 +371,39 @@ const Page = () => {
                 primaryColor={theme.colors.primary}
                 secondaryColor={theme.colors.secondary}
                 headerTitle="⚠️ Changer le groupe par défaut ⚠️"
-                renderContent={() => (
-                    <FlatList
-                        contentContainerStyle={{
-                            paddingBottom: screenHeight * 0.1,
-                        }}
-                        data={Object.keys(groupInfo)}
-                        keyExtractor={(item) => item}
-                        renderItem={({ item, index }) => (
-                            <TouchableOpacity
-                                style={[
-                                    styles.groupItem,
-                                    {
-                                        backgroundColor: group === item
-                                            ? theme.colors.primary
-                                            : `${theme.bg.tabBarActive}${index % 2 === 0 ? '20' : '10'}`,
-                                    }
-                                ]}
-                                onPress={() => handleGroupSelection(item)}
-                            >
-                                <Text style={{ color: theme.text.base }}>{item}</Text>
-                            </TouchableOpacity>
-                        )}
-                    />
-                )}
+                renderContent={() => {
+                    // On prépare la liste des groupes
+                    const groupList = Object.keys(groupInfo);
+                    // Si on a une URL perso, on l'ajoute au début
+                    const data = persoGroupUrl ? [persoGroupUrl, ...groupList] : groupList;
+
+                    return (
+                        <FlatList
+                            contentContainerStyle={{
+                                paddingBottom: screenHeight * 0.1,
+                            }}
+                            data={data}
+                            keyExtractor={(item) => item}
+                            renderItem={({ item, index }) => (
+                                <TouchableOpacity
+                                    style={[
+                                        styles.groupItem,
+                                        {
+                                            backgroundColor: group === item
+                                                ? theme.colors.primary
+                                                : `${theme.bg.tabBarActive}${index % 2 === 0 ? '20' : '10'}`,
+                                        }
+                                    ]}
+                                    onPress={() => handleGroupSelection(item)}
+                                >
+                                    <Text style={{ color: theme.text.base }}>
+                                        {getGroupDisplayName(item)}
+                                    </Text>
+                                </TouchableOpacity>
+                            )}
+                        />
+                    );
+                }}
             />
 
             <CustomModal

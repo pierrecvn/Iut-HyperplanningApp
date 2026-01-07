@@ -7,7 +7,12 @@ import {
 	setUserData,
 	recupDataUtilisateur,
 	saveGroupSupabase,
-	saveRappelSupabase, removeUserData
+	saveRappelSupabase, 
+    removeUserData,
+    setPersonalIcalUrl,
+    getPersonalIcalUrl,
+    setUsePersonalIcal,
+    getUsePersonalIcal
 } from '@/functions/supabase';
 import {router} from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
@@ -23,6 +28,7 @@ interface AuthContextProps {
 	removeUserAllData: () => void;
 	checkUser: () => Promise<void>;
 	connexion: () => Promise<void>;
+	connexionUniversitaire: (icalUrl: string) => Promise<void>;
 	deconnexion: () => Promise<void>;
 	supabase: any;
 	getUserData: () => UserData | null;
@@ -35,24 +41,85 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({children}
 	const [user, setUser] = useState<UserData | null>(null);
 	const [loading, setLoading] = useState(false);
 
-	// console.log('AuthProvider');
+    const createLocalUser = (icalUrl: string): UserData => ({
+        id: 'local_user',
+        pseudo: 'Étudiant',
+        sub: 'local_sub',
+        full_name: 'Étudiant (Local)',
+        email: 'etudiant@univ-lehavre.fr',
+        avatar_url: 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png',
+        group: icalUrl,
+        api_requests_count: 0,
+        rappel: 15,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+    });
 
 	const checkUser = useCallback(async () => {
 		try {
 			const data = await recupDataUtilisateur();
 			if (data?.sub) {
-				console.log(data);
+				console.log("Connecté via Discord:", data.pseudo);
+                
+                if (getUsePersonalIcal()) {
+                    const savedIcal = getPersonalIcalUrl();
+                    if (savedIcal) {
+                        data.group = savedIcal;
+                    }
+                }
+
 				await setUserData(data);
 				setUser(data as UserData);
+                return;
 			}
+
+            const localUser = getUserData();
+            if (localUser) {
+                if (localUser.id === 'local_user') {
+                     const savedIcal = getPersonalIcalUrl();
+                     if (savedIcal) {
+                         localUser.group = savedIcal;
+                         setUserData(localUser);
+                     }
+                    setUser(localUser);
+                    return;
+                }
+                 setUser(localUser);
+                 return;
+            }
+
+            const persoIcal = getPersonalIcalUrl();
+            if (persoIcal) {
+                const newLocalUser = createLocalUser(persoIcal);
+                await setUserData(newLocalUser);
+                setUser(newLocalUser);
+            }
+
 		} catch (error) {
-			console.log('Erreur lors de la récupération de l\'utilisateurv Discord:', error);
+			console.log('Erreur checkUser:', error);
+            const localUser = getUserData();
+            if (localUser) setUser(localUser);
 		}
 	}, []);
 
 	useEffect(() => {
 		checkUser();
 	}, [checkUser]);
+
+    const connexionUniversitaire = async (icalUrl: string) => {
+        try {
+            setLoading(true);
+            setPersonalIcalUrl(icalUrl);
+            
+            const fakeUser = createLocalUser(icalUrl);
+            await setUserData(fakeUser);
+            setUser(fakeUser);
+        } catch (error) {
+            console.error("Erreur connexion universitaire:", error);
+        } finally {
+            setLoading(false);
+        }
+    };
 
 	const connexion = async () => {
 
@@ -115,6 +182,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({children}
 			loading,
 			checkUser,
 			connexion,
+            connexionUniversitaire,
 			deconnexion,
 			removeUserAllData,
 			recupDataUtilisateur,

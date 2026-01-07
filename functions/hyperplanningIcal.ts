@@ -28,13 +28,19 @@ async function fetchIcalEvents(edtInfo: string, isClass: boolean): Promise<IcalE
 	const idICal = edtInfoData[edtInfo];
 	const cacheKey = `ical_${isClass ? 'class' : 'salle'}_${edtInfo}`;
 
-	if (!idICal) {
+	if (!idICal && !edtInfo.startsWith('http')) {
 		console.error(`Pas d'ID : ${edtInfo}`);
 		return [];
 	}
 
 	const type = isClass ? 'INFO' : 'IUTC';
-	const url = `${baseUrl}Edt_${type}_${edtInfo}.ics?version=${version}&idICal=${idICal}&param=${param}`;
+	
+	let url = '';
+	if (edtInfo.startsWith('http')) {
+		url = edtInfo;
+	} else {
+		url = `${baseUrl}Edt_${type}_${edtInfo}.ics?version=${version}&idICal=${idICal}&param=${param}`;
+	}
 
 	try {
 		const response = await fetch(url);

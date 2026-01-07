@@ -68,6 +68,7 @@ export const getUserData = (): UserData | null => {
 export const removeUserAllData = async (): Promise<void> => {
     try {
         await removeUserData();
+        removePersonalIcalUrl();
         const { error: deleteError } = await supabase.rpc('delete_user_complete');
         if (deleteError) {
             console.error('Erreur lors de la suppression des données :', deleteError);
@@ -128,34 +129,94 @@ export const recupDataUtilisateur = async (): Promise<UserData | null> => {
     }
 };
 
+export const setPersonalIcalUrl = (url: string) => {
+    storage.set('personal_ical_url', url);
+};
+
+export const getPersonalIcalUrl = (): string | null => {
+    return storage.getString('personal_ical_url') ?? null;
+};
+
+export const removePersonalIcalUrl = () => {
+    storage.remove('personal_ical_url');
+};
+
+// Préférence d'activation de l'iCal perso
+export const setUsePersonalIcal = (value: boolean) => {
+    storage.set('use_personal_ical', value);
+};
+
+export const getUsePersonalIcal = (): boolean => {
+    return storage.getBoolean('use_personal_ical') ?? false;
+};
+
 export const saveGroupSupabase = async (group: string) => {
     try {
+        // Récupérer les données locales actuelles
+        const currentLocalData = getUserData();
+        
+        // Si c'est une URL (iCal perso)
+        if (group.startsWith('http')) {
+            setPersonalIcalUrl(group);
+            setUsePersonalIcal(true); // On active le mode perso
+
+            if (currentLocalData) {
+                const updatedData = { ...currentLocalData, group };
+                await setUserData(updatedData);
+            }
+            return;
+        } else {
+            // Si c'est un groupe standard, on désactive le mode perso
+            // MAIS on ne supprime pas l'URL du stockage, pour pouvoir y revenir plus tard
+            setUsePersonalIcal(false);
+        }
+
+        // Si utilisateur local (mode Université sans Discord)
+        if (currentLocalData && currentLocalData.id === 'local_user') {
+            const updatedData = { ...currentLocalData, group };
+            await setUserData(updatedData);
+            return;
+        }
+
+        // Sinon (utilisateur Discord + groupe standard court), on sync avec Supabase
         const { data: { user }, error: authError } = await supabase.auth.getUser();
 
-        if (authError) throw authError;
-
-        if (!user) {
+        if (authError || !user) {
+             if (currentLocalData) {
+                 const updatedData = { ...currentLocalData, group };
+                 await setUserData(updatedData);
+                 return;
+             }
             throw new Error("Utilisateur non connecté");
         }
 
-        const { data, error: profileError } = await supabase
+        const { error: profileError } = await supabase
             .from('utilisateur')
             .update({ group })
             .eq('sub', user.user_metadata.sub);
 
-        if (profileError) throw profileError;
+        if (profileError) {
+            console.warn("Erreur Supabase, fallback local:", profileError.message);
+            if (currentLocalData) {
+                 const updatedData = { ...currentLocalData, group };
+                 await setUserData(updatedData);
+            }
+            return;
+        }
 
-        // console.log(getUserData())
-
+        // Rechargement propre depuis le serveur pour être synchro
         const userData = await recupDataUtilisateur();
         if (userData) {
             await setUserData(userData);
         }
 
-        // console.log(getUserData())
-
     } catch (error) {
-        console.log(`Erreur lors de la récupération des données utilisateur : ${(error as Error).message}`);
+        console.log(`Erreur lors de la sauvegarde du groupe : ${(error as Error).message}`);
+        const currentLocalData = getUserData();
+        if (currentLocalData) {
+             const updatedData = { ...currentLocalData, group };
+             await setUserData(updatedData);
+        }
         return null;
     }
 }

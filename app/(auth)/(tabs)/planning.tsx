@@ -6,6 +6,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useEdt } from '@/context/EdtContext';
 import { useTheme } from '@/context/ThemeContext';
 import groupInfo from '@/functions/utils/edtInfo.json';
+import { getPersonalIcalUrl } from '@/functions/supabase';
 import { Ionicons } from "@expo/vector-icons";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { useHeaderHeight } from '@react-navigation/elements';
@@ -33,13 +34,25 @@ const Page = () => {
     const BOTTOM_PADDING = useBottomTabBarHeight() - useSafeAreaInsets().bottom;
 
     const [group, setGroup] = useState<string>('');
+    const [persoGroupUrl, setPersoGroupUrl] = useState<string | null>(null);
     const [activeModal, setActiveModal] = useState<ModalType>(null);
     const [isInitialGroupSelection, setIsInitialGroupSelection] = useState(false);
     const modalPositionY = useRef(new Animated.Value(screenHeight)).current;
 
+    const getGroupDisplayName = (grp: string) => {
+        if (!grp) return "Groupe";
+        if (grp.startsWith('http')) return "Mon Planning (Perso)";
+        return grp;
+    };
+
     useEffect(() => {
         const initializeGroup = async () => {
             try {
+                const storedPersoUrl = getPersonalIcalUrl();
+                if (storedPersoUrl) {
+                    setPersoGroupUrl(storedPersoUrl);
+                }
+
                 if (user?.group == null) {
                     setActiveModal('group');
                     setIsInitialGroupSelection(true);
@@ -52,7 +65,7 @@ const Page = () => {
         };
 
         initializeGroup();
-    }, []);
+    }, [user]);
 
     const openModal = (modalType: ModalType) => {
         setActiveModal(modalType);
@@ -134,7 +147,7 @@ const Page = () => {
                     >
                         <Ionicons name="people" size={18} color={theme.colors.primary} style={{ marginRight: 6 }} />
                         <Text style={[styles.groupText, { color: theme.text.base }]} numberOfLines={1}>
-                            {group || "Groupe"}
+                            {getGroupDisplayName(group)}
                         </Text>
                         <Ionicons name="chevron-down" size={14} color={theme.text.secondary} style={{ marginLeft: 4 }} />
                     </TouchableOpacity>
@@ -243,12 +256,16 @@ const Page = () => {
                     });
                 }}
                 headerTitle={isInitialGroupSelection ? "⚠️ Définir le groupe par défaut ⚠️" : "Sélection du groupe"}
-                renderContent={() => (
+                renderContent={() => {
+                     const groupList = Object.keys(groupInfo);
+                     const data = persoGroupUrl ? [persoGroupUrl, ...groupList] : groupList;
+                    
+                    return (
                     <FlatList
                         contentContainerStyle={{
                             paddingBottom: screenHeight * 0.1,
                         }}
-                        data={Object.keys(groupInfo)}
+                        data={data}
                         keyExtractor={(item) => item}
                         renderItem={({ item, index }) => (
                             <TouchableOpacity
@@ -258,11 +275,11 @@ const Page = () => {
                                 }}
                                 onPress={() => handleGroupSelection(item)}
                             >
-                                <Text style={{ color: theme.text.base }}>{item}</Text>
+                                <Text style={{ color: theme.text.base }}>{getGroupDisplayName(item)}</Text>
                             </TouchableOpacity>
                         )}
                     />
-                )}
+                )}}
             />
         </SafeAreaView>
     );
