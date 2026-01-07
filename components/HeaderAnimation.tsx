@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Animated, Text, View } from 'react-native';
+import { Animated, Text, View, Image, StyleSheet } from 'react-native';
 import { useAuth } from '@/context/AuthContext';
 import CustomHeader from '@/components/CustomHeader';
 import {useTheme} from "@/context/ThemeContext";
@@ -7,14 +7,9 @@ import {useTheme} from "@/context/ThemeContext";
 const HeaderAnimation = () => {
 	const { user } = useAuth();
 	const { theme } = useTheme();
-	const [discordName, setDiscordName] = useState('');
 	const emojiOpacity = useState(new Animated.Value(0))[0];
 
 	useEffect(() => {
-		if (user) {
-			setDiscordName(user?.pseudo);
-		}
-
 		Animated.loop(
 			Animated.sequence([
 				Animated.timing(emojiOpacity, {
@@ -29,26 +24,54 @@ const HeaderAnimation = () => {
 				}),
 			])
 		).start();
-	}, [user, emojiOpacity]);
+	}, [emojiOpacity]);
 
 	return (
 		<CustomHeader
-			// title='Menu'
 			viewCustom={
-			<View style={{ flexDirection: 'row', alignItems: 'center' }}>
-				<Text style={{ color: theme.text.base, fontWeight: '900', fontSize: 30, fontFamily: 'Inter', fontStyle: 'normal' }}>
-					Salut {discordName + " "}
-				</Text>
-				<Text style={{ color: theme.text.base, fontWeight: '900', fontSize: 30, fontFamily: 'Inter', fontStyle: 'normal' }}>
-					( {user?.group} )
-				</Text>
-				<Animated.Text style={{ opacity: emojiOpacity, fontSize: 20, paddingLeft: 5 }}>
-					👋
-				</Animated.Text>
-
+			<View style={styles.container}>
+				<View style={styles.leftSection}>
+					<Text style={[styles.title, { color: theme.text.base }]}>
+						Menu
+					</Text>
+					<Animated.Text style={{ opacity: emojiOpacity, fontSize: 22, marginLeft: 8 }}>
+						👋
+					</Animated.Text>
+				</View>
+				
+				{user?.avatar_url && (
+					<Image 
+						source={{ uri: user.avatar_url }} 
+						style={[styles.avatar, { borderColor: theme.colors.primary + '30' }]} 
+					/>
+				)}
 			</View>
 			}/>
 	);
 };
+
+const styles = StyleSheet.create({
+	container: {
+		flexDirection: 'row',
+		alignItems: 'center',
+		justifyContent: 'space-between',
+		flex: 1,
+	},
+	leftSection: {
+		flexDirection: 'row',
+		alignItems: 'center',
+	},
+	title: {
+		fontWeight: '900',
+		fontSize: 30,
+		fontFamily: 'Inter',
+	},
+	avatar: {
+		width: 40,
+		height: 40,
+		borderRadius: 20,
+		borderWidth: 2,
+	}
+});
 
 export default HeaderAnimation;

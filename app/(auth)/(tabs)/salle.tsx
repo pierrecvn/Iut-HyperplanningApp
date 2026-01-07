@@ -14,9 +14,12 @@ import dayjs from 'dayjs';
 import 'dayjs/locale/fr';
 import React, { useEffect, useRef, useState } from 'react';
 import { Animated, Dimensions, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { FlatList } from 'react-native-gesture-handler';
+import { Directions, FlatList, Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import DateTimePicker from 'react-native-ui-datepicker';
+import { runOnJS } from 'react-native-worklets';
+
+import { useLocalSearchParams } from 'expo-router';
 
 type ModalType = 'salle' | 'calendar' | null;
 type ViewMode = 'daily' | 'weekly';
@@ -27,11 +30,29 @@ const Page = () => {
     const { theme } = useTheme();
     const { selectedDate, setSelectedDate } = useEdt();
     const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
+    const { salle: salleParam } = useLocalSearchParams<{ salle: string }>();
 
     const [viewMode, setViewMode] = useState<ViewMode>('daily');
     const BOTTOM_PADDING = useBottomTabBarHeight() - useSafeAreaInsets().bottom;
 
-    const [salle, setSalle] = useState<string>('602_b'); // Salle par défaut
+    const [salle, setSalle] = useState<string>('602_b');
+
+    useEffect(() => {
+        if (salleParam) {
+
+            const normalizedParam = salleParam.toLowerCase().startsWith('s') ? salleParam.slice(1).toLowerCase() : salleParam.toLowerCase();
+            
+            const foundSalle = Object.keys(salleInfo).find(s => 
+                s.toLowerCase() === normalizedParam || 
+                normalizedParam.includes(s.toLowerCase()) ||
+                s.toLowerCase().includes(normalizedParam)
+            );
+
+            if (foundSalle) {
+                setSalle(foundSalle);
+            }
+        }
+    }, [salleParam]);
     const [events, setEvents] = useState<ICalEvent[]>([]);
     const [loading, setLoading] = useState<boolean>(false);
 
@@ -103,78 +124,103 @@ const Page = () => {
         setViewMode(prev => prev === 'daily' ? 'weekly' : 'daily');
     };
 
+    // Swipe Gestures
+    const flingLeft = Gesture.Fling()
+        .direction(Directions.LEFT)
+        .onStart(() => {
+            runOnJS(jourSvt)();
+        });
+
+    const flingRight = Gesture.Fling()
+        .direction(Directions.RIGHT)
+        .onStart(() => {
+            runOnJS(jourPrc)();
+        });
+
+    const composedGestures = Gesture.Race(flingLeft, flingRight);
+
     return (
         <SafeAreaView style={[styles.container, { backgroundColor: theme.bg.base, paddingTop: headerHeight, paddingBottom: BOTTOM_PADDING }]}>
-            <View style={styles.dateNavigation}>
-                <RoundBtn
-                    widthCircle={0.5}
-                    hasIcon
-                    icon="chevron-back"
-                    text="-"
-                    onPress={jourPrc}
-                />
 
-                <TouchableOpacity
-                    onPress={() => openModal('calendar')}
-                    activeOpacity={0.4}
-                    style={[styles.dateContainer, {
-                        backgroundColor: theme.colors.secondary,
-                        width: screenWidth * 0.55,
-                        height: 50
-                    }]}
-                >
-                    <Text style={styles.dateText}>
-                        {formatDate(selectedDate)}
-                    </Text>
-                </TouchableOpacity>
+            <View style={styles.headerWrapper}>
+                <View style={styles.topBar}>
+                    <TouchableOpacity
+                        onPress={() => openModal('salle')}
+                        activeOpacity={0.6}
+                        style={[styles.groupSelector, { backgroundColor: theme.colors.secondary + '15' }]}
+                    >
+                        <Ionicons name="business" size={18} color={theme.colors.primary} style={{ marginRight: 6 }} />
+                        <Text style={[styles.groupText, { color: theme.text.base }]} numberOfLines={1}>
+                            {salle ? `Salle ${salle.slice(0, 3)}` : "Sélectionner"}
+                        </Text>
+                        <Ionicons name="chevron-down" size={14} color={theme.text.secondary} style={{ marginLeft: 4 }} />
+                    </TouchableOpacity>
 
-                <RoundBtn
-                    widthCircle={0.5}
-                    hasIcon
-                    icon="chevron-forward"
-                    text="-"
-                    onPress={jourSvt}
-                />
-            </View>
+                    <View style={[styles.viewToggleContainer, { backgroundColor: theme.bg.tabBarActive }]}>
+                        <TouchableOpacity
+                            onPress={() => setViewMode('daily')}
+                            style={[
+                                styles.viewToggleBtn,
+                                viewMode === 'daily' && { backgroundColor: theme.colors.primary, shadowColor: theme.colors.primary, shadowOpacity: 0.3, shadowRadius: 4, elevation: 2 }
+                            ]}
+                        >
+                            <Text style={[styles.viewToggleText, { color: viewMode === 'daily' ? 'white' : theme.text.secondary }]}>Jour</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            onPress={() => setViewMode('weekly')}
+                            style={[
+                                styles.viewToggleBtn,
+                                viewMode === 'weekly' && { backgroundColor: theme.colors.primary, shadowColor: theme.colors.primary, shadowOpacity: 0.3, shadowRadius: 4, elevation: 2 }
+                            ]}
+                        >
+                            <Text style={[styles.viewToggleText, { color: viewMode === 'weekly' ? 'white' : theme.text.secondary }]}>Semaine</Text>
+                        </TouchableOpacity>
+                    </View>
+                </View>
 
-            <View style={styles.headerContainer}>
-                <TouchableOpacity
-                    onPress={() => openModal('salle')}
-                    activeOpacity={0.4}
-                    style={[styles.dateContainer, {
-                        backgroundColor: theme.colors.secondary,
-                        width: screenWidth * 0.7,
-                        height: 50
-                    }]}
-                >
-                    <Text style={styles.dateText}>
-                        SALLE - {salle.slice(0, 3)}
-                    </Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                    onPress={toggleViewMode}
-                    style={[styles.viewModeButton, {
-                        backgroundColor: theme.colors.secondary,
-                    }]}
-                >
-                    <Ionicons
-                        name={viewMode === 'daily' ? 'calendar-outline' : 'today-outline'}
-                        size={24}
-                        color="black"
+                <View style={styles.dateNavigation}>
+                    <RoundBtn
+                        text=''
+                        widthCircle={0.4}
+                        hasIcon
+                        icon="chevron-back"
+                        onPress={jourPrc}
                     />
-                </TouchableOpacity>
+
+                    <TouchableOpacity
+                        onPress={() => openModal('calendar')}
+                        activeOpacity={0.6}
+                        style={styles.dateCenter}
+                    >
+                        <Text style={[styles.dateText, { color: theme.text.base }]}>
+                            {formatDate(selectedDate)}
+                        </Text>
+                        <View style={{ height: 2, width: 20, backgroundColor: theme.colors.primary, marginTop: 4, borderRadius: 2 }} />
+                    </TouchableOpacity>
+
+                    <RoundBtn
+                        text=''
+                        widthCircle={0.4}
+                        hasIcon
+                        icon="chevron-forward"
+                        onPress={jourSvt}
+                    />
+                </View>
             </View>
 
-            <View style={styles.eventListContainer}>
-                {loading ? (
-                    <Text style={{ color: theme.text.base, marginTop: 20 }}>Chargement...</Text>
-                ) : (
-                    viewMode === 'daily'
-                        ? <EventList data={events} />
-                        : <WeeklySchedule data={events} />
-                )}
-            </View>
+            <GestureDetector gesture={composedGestures}>
+                <View style={[styles.eventListContainer, { backgroundColor: theme.bg.base }]}>
+                    {loading ? (
+                        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+                            <Text style={{ color: theme.text.base }}>Chargement...</Text>
+                        </View>
+                    ) : (
+                        viewMode === 'daily'
+                            ? <EventList data={events} />
+                            : <WeeklySchedule data={events} />
+                    )}
+                </View>
+            </GestureDetector>
 
             <CustomModal
                 visible={activeModal === 'calendar'}
@@ -243,42 +289,59 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
     },
+    headerWrapper: {
+        paddingHorizontal: 20,
+        marginBottom: 10,
+    },
+    topBar: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 15,
+    },
+    groupSelector: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: 8,
+        paddingHorizontal: 12,
+        borderRadius: 20,
+        maxWidth: '55%',
+    },
+    groupText: {
+        fontSize: 14,
+        fontWeight: '600',
+        maxWidth: '85%',
+    },
+    viewToggleContainer: {
+        flexDirection: 'row',
+        borderRadius: 20,
+        padding: 4,
+    },
+    viewToggleBtn: {
+        paddingVertical: 6,
+        paddingHorizontal: 12,
+        borderRadius: 16,
+    },
+    viewToggleText: {
+        fontSize: 12,
+        fontWeight: '600',
+    },
     dateNavigation: {
         flexDirection: 'row',
         justifyContent: 'space-between',
-        paddingHorizontal: 20,
-        padding: 10,
-        position: 'relative',
-    },
-    headerContainer: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
         alignItems: 'center',
-        paddingHorizontal: 20,
-        padding: 10,
     },
-    dateContainer: {
-        borderRadius: 10,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    viewModeButton: {
-        width: 50,
-        height: 50,
-        borderRadius: 10,
+    dateCenter: {
         alignItems: 'center',
         justifyContent: 'center',
     },
     dateText: {
         fontSize: 18,
         fontFamily: 'Inter',
-        fontWeight: '900',
-        color: '#000'
+        fontWeight: '800',
     },
     eventListContainer: {
         flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
     },
 });
 

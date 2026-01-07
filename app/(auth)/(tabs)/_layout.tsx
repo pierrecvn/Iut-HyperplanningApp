@@ -1,16 +1,11 @@
-// app/(auth)/_layout.tsx
-
 import CustomHeader from '@/components/CustomHeader';
 import { useTheme } from '@/context/ThemeContext';
-import { AntDesign, Ionicons, MaterialIcons } from '@expo/vector-icons';
+import { AntDesign, Ionicons } from '@expo/vector-icons';
 
 import { Tabs } from 'expo-router';
-import { Dimensions, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import HeaderAnimation from "@/components/HeaderAnimation";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useEffect } from "react";
-import * as NavigationBar from "expo-navigation-bar";
-import { useAuth } from "@/context/AuthContext";
 
 
 const Layout = () => {
@@ -41,7 +36,7 @@ const Layout = () => {
                 name="home"
                 options={{
                     title: 'Menu',
-                    tabBarIcon: ({ size, color, focused }) => (
+                    tabBarIcon: ({ color, focused }) => (
                         <View style={styles.iconContainer}>
                             {focused && (
                                 <View style={[styles.focusBg, { backgroundColor: theme.bg.tabBarActive }]} />
@@ -59,7 +54,7 @@ const Layout = () => {
                 name="planning"
                 options={{
                     title: 'Planning',
-                    tabBarIcon: ({ size, color, focused }) => (
+                    tabBarIcon: ({ color, focused }) => (
                         <View style={styles.iconContainer}>
                             {focused && (
                                 <View style={[styles.focusBg, { backgroundColor: theme.bg.tabBarActive }]} />
@@ -76,7 +71,7 @@ const Layout = () => {
                 name="salle"
                 options={{
                     title: 'salle',
-                    tabBarIcon: ({ size, color, focused }) => (
+                    tabBarIcon: ({ color, focused }) => (
                         <View style={styles.iconContainer}>
                             {focused && (
                                 <View style={[styles.focusBg, { backgroundColor: theme.bg.tabBarActive }]} />
@@ -93,7 +88,7 @@ const Layout = () => {
                 name="parametres"
                 options={{
                     title: 'Paramètres',
-                    tabBarIcon: ({ size, color, focused }) => (
+                    tabBarIcon: ({ color, focused }) => (
                         <View style={styles.iconContainer}>
                             {focused && (
                                 <View style={[styles.focusBg, { backgroundColor: theme.bg.tabBarActive }]} />
