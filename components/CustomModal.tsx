@@ -8,6 +8,8 @@ import {
 	Text,
 	TouchableOpacity,
 	View,
+	KeyboardAvoidingView,
+	Platform,
 } from 'react-native';
 import {Ionicons} from "@expo/vector-icons";
 
@@ -81,53 +83,58 @@ const CustomModal = ({
 	return (
 
 		<Modal visible={visible} transparent={true} onRequestClose={closeModal} animationType="fade">
-			<TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={closeModal}>
-				<Animated.View
-					style={[
-						styles.modalContainer,
-						{
-							transform: [{ translateY: modalPositionY }],
-							backgroundColor
-						}
-					]}
-					{...panResponder.panHandlers}
-				>
-					<View style={styles.modalHandle} />
+			<KeyboardAvoidingView 
+				behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+				style={{ flex: 1 }}
+			>
+				<TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={closeModal}>
+					<Animated.View
+						style={[
+							styles.modalContainer,
+							{
+								transform: [{ translateY: modalPositionY }],
+								backgroundColor
+							}
+						]}
+						{...panResponder.panHandlers}
+					>
+						<View style={styles.modalHandle} />
 
-					<View style={[styles.modalHeader,]}>
-						<View style={{ flex:1 , width: screenWeight }}>
-							<Text style={[styles.modalTitle, { color: secondaryColor }]}>
-								{headerTitle}
-							</Text>
+						<View style={[styles.modalHeader,]}>
+							<View style={{ flex:1 , width: screenWeight }}>
+								<Text style={[styles.modalTitle, { color: secondaryColor }]}>
+									{headerTitle}
+								</Text>
 
-						</View>
-						<View style={[styles.headerButtons]}>
-							{actionButtonLabel && (
+							</View>
+							<View style={[styles.headerButtons]}>
+								{actionButtonLabel && (
+									<TouchableOpacity
+										style={styles.actionButton}
+										onPress={onActionButtonPress}
+									>
+										<Text style={[styles.actionButtonText, { color: primaryColor }]}>
+											{actionButtonLabel}
+										</Text>
+									</TouchableOpacity>
+								)}
+
 								<TouchableOpacity
-									style={styles.actionButton}
-									onPress={onActionButtonPress}
+									style={styles.closeButton}
+									onPress={closeModal}
 								>
-									<Text style={[styles.actionButtonText, { color: primaryColor }]}>
-										{actionButtonLabel}
-									</Text>
+
+									<Ionicons name={'close-circle'}	size={24} color={primaryColor} />
 								</TouchableOpacity>
-							)}
-
-							<TouchableOpacity
-								style={styles.closeButton}
-								onPress={closeModal}
-							>
-
-								<Ionicons name={'close-circle'}	size={24} color={primaryColor} />
-							</TouchableOpacity>
+							</View>
 						</View>
-					</View>
 
-					<View style={styles.modalContent}>
-						{renderContent()}
-					</View>
-				</Animated.View>
-			</TouchableOpacity>
+						<View style={styles.modalContent}>
+							{renderContent()}
+						</View>
+					</Animated.View>
+				</TouchableOpacity>
+			</KeyboardAvoidingView>
 		</Modal>
 	);
 };

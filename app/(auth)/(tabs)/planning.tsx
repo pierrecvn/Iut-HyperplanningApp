@@ -7,13 +7,14 @@ import { useEdt } from '@/context/EdtContext';
 import { useTheme } from '@/context/ThemeContext';
 import groupInfo from '@/functions/utils/edtInfo.json';
 import { getPersonalIcalUrl } from '@/functions/supabase';
+import { CalendarService, CustomCalendar } from '@/functions/calendarService';
 import { Ionicons } from "@expo/vector-icons";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { useHeaderHeight } from '@react-navigation/elements';
 import dayjs from 'dayjs';
 import 'dayjs/locale/fr';
 import React, { useEffect, useRef, useState } from 'react';
-import { Animated, Dimensions, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Animated, Dimensions, StyleSheet, Text, TouchableOpacity, View, TextInput } from 'react-native';
 import { Directions, FlatList, Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import DateTimePicker from 'react-native-ui-datepicker';
@@ -38,9 +39,22 @@ const Page = () => {
     const [activeModal, setActiveModal] = useState<ModalType>(null);
     const [isInitialGroupSelection, setIsInitialGroupSelection] = useState(false);
     const modalPositionY = useRef(new Animated.Value(screenHeight)).current;
+    
+    // Ajouts pour la gestion avancée des groupes
+    const [customCalendars, setCustomCalendars] = useState<CustomCalendar[]>([]);
+    const [groupSearchText, setGroupSearchText] = useState('');
+
+    useEffect(() => {
+        setCustomCalendars(CalendarService.getCalendars());
+    }, []);
 
     const getGroupDisplayName = (grp: string) => {
         if (!grp) return "Groupe";
+        if (grp === 'merged_view') return "Vue Combinée";
+        
+        const customCal = customCalendars.find(c => c.url === grp);
+        if (customCal) return `${customCal.name} (Perso)`;
+        
         if (grp.startsWith('http')) return "Mon Planning (Perso)";
         return grp;
     };
@@ -243,7 +257,10 @@ const Page = () => {
 
             <CustomModal
                 visible={activeModal === 'group'}
-                onClose={() => !isInitialGroupSelection && closeModal()}
+                onClose={() => {
+                    if (!isInitialGroupSelection) closeModal();
+                    setGroupSearchText('');
+                }}
                 backgroundColor={theme.bg.base}
                 primaryColor={theme.colors.primary}
                 secondaryColor={theme.colors.secondary}
@@ -258,27 +275,81 @@ const Page = () => {
                 headerTitle={isInitialGroupSelection ? "⚠️ Définir le groupe par défaut ⚠️" : "Sélection du groupe"}
                 renderContent={() => {
                      const groupList = Object.keys(groupInfo);
-                     const data = persoGroupUrl ? [persoGroupUrl, ...groupList] : groupList;
+                     const customCalUrls = customCalendars.map(c => c.url);
+                     
+                     let fullData = ['merged_view', ...customCalUrls, ...groupList];
+                     
+                     if (persoGroupUrl && !customCalUrls.includes(persoGroupUrl)) {
+                         fullData.splice(1, 0, persoGroupUrl);
+                     }
+                     
+                     fullData = [...new Set(fullData)];
+
+                     const filteredData = fullData.filter(item => {
+                        let displayName = '';
+                        if (item === 'merged_view') displayName = 'Vue Combinée (Tous mes calendriers)';
+                        else displayName = getGroupDisplayName(item).toLowerCase();
+                        
+                        const search = groupSearchText.toLowerCase();
+                        return displayName.includes(search);
+                     });
                     
                     return (
-                    <FlatList
-                        contentContainerStyle={{
-                            paddingBottom: screenHeight * 0.1,
-                        }}
-                        data={data}
-                        keyExtractor={(item) => item}
-                        renderItem={({ item, index }) => (
-                            <TouchableOpacity
-                                style={{
-                                    padding: 15,
-                                    backgroundColor: (group === item) ? theme.colors.primary : ((index % 2) === 0) ? theme.bg.tabBarActive + "20" : theme.bg.tabBarActive + "10",
-                                }}
-                                onPress={() => handleGroupSelection(item)}
-                            >
-                                <Text style={{ color: theme.text.base }}>{getGroupDisplayName(item)}</Text>
-                            </TouchableOpacity>
-                        )}
-                    />
+                    <View style={{ height: screenHeight * 0.7 }}>
+                        <TextInput
+                            style={{
+                                backgroundColor: theme.bg.alarme,
+                                color: theme.text.base,
+                                padding: 12,
+                                borderRadius: 12,
+                                marginBottom: 10,
+                                fontSize: 16
+                            }}
+                            placeholder="Rechercher un groupe..."
+                            placeholderTextColor={theme.text.secondary}
+                            value={groupSearchText}
+                            onChangeText={setGroupSearchText}
+                            autoCapitalize="none"
+                            autoCorrect={false}
+                        />
+                        <FlatList
+                            contentContainerStyle={{
+                                paddingBottom: screenHeight * 0.1,
+                            }}
+                            data={filteredData}
+                            keyExtractor={(item) => item}
+                            initialNumToRender={20}
+                            maxToRenderPerBatch={20}
+                            windowSize={10}
+                            renderItem={({ item, index }) => {
+                                const isMerged = item === 'merged_view';
+                                const display = isMerged ? 'Vue Combinée (Tous mes calendriers)' : getGroupDisplayName(item);
+
+                                return (
+                                    <TouchableOpacity
+                                        style={{
+                                            padding: 15,
+                                            backgroundColor: (group === item) 
+                                                ? theme.colors.primary 
+                                                : (isMerged ? theme.colors.secondary + '20' : ((index % 2) === 0) ? theme.bg.tabBarActive + "20" : theme.bg.tabBarActive + "10"),
+                                            borderWidth: isMerged ? 1 : 0,
+                                            borderColor: theme.colors.primary
+                                        }}
+                                        onPress={() => {
+                                            handleGroupSelection(item);
+                                            setGroupSearchText('');
+                                        }}
+                                    >
+                                        <Text style={{ 
+                                            color: theme.text.base,
+                                            fontWeight: isMerged ? 'bold' : 'normal',
+                                            fontSize: isMerged ? 16 : 14
+                                        }}>{display}</Text>
+                                    </TouchableOpacity>
+                                );
+                            }}
+                        />
+                    </View>
                 )}}
             />
         </SafeAreaView>

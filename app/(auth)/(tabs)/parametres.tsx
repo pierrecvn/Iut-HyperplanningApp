@@ -1,11 +1,12 @@
-import CustomModal from '@/components/CustomModal';
 import CasLoginModal from '@/components/CasLoginModal';
+import CustomModal from '@/components/CustomModal';
 import SettingItem from "@/components/SettingItem";
 import { useAuth } from '@/context/AuthContext';
 import { useEdt } from "@/context/EdtContext";
 import { useTheme } from '@/context/ThemeContext';
+import { CalendarService, CustomCalendar } from '@/functions/calendarService';
 import { NotificationService } from "@/functions/NotificationService";
-import { getNotificationStatus, removeUserAllData, saveNotificationStatus, getPersonalIcalUrl } from "@/functions/supabase";
+import { getNotificationStatus, getPersonalIcalUrl, removeUserAllData, saveNotificationStatus } from "@/functions/supabase";
 import groupInfo from '@/functions/utils/edtInfo.json';
 import { UserData } from "@/interfaces/UserData";
 import packageJson from '@/package.json';
@@ -16,7 +17,7 @@ import dayjs from 'dayjs';
 import 'dayjs/locale/fr';
 import * as Notifications from "expo-notifications";
 import React, { useEffect, useState } from 'react';
-import { Dimensions, Image, StyleSheet, Text, TouchableOpacity, View, Alert } from 'react-native';
+import { Alert, Dimensions, Image, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { FlatList, ScrollView, } from 'react-native-gesture-handler';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -27,12 +28,14 @@ const { height: screenHeight } = Dimensions.get('window');
 
 type ModalType = 'group' | 'calendar' | 'info' | 'rappel' | 'warning' | null;
 
+const COLORS = ['#F44336', '#E91E63', '#9C27B0', '#673AB7', '#3F51B5', '#2196F3', '#03A9F4', '#00BCD4', '#009688', '#4CAF50', '#8BC34A', '#CDDC39', '#FFEB3B', '#FFC107', '#FF9800', '#FF5722', '#795548', '#9E9E9E', '#607D8B'];
+
 const Page = () => {
     const insets = useSafeAreaInsets();
     const headerHeight = useHeaderHeight() - insets.top;
     const { theme, isDark, toggleTheme, useSystemTheme, isSystemTheme, useRandomTheme, isRandomTheme } = useTheme();
     const BOTTOM_PADDING = useBottomTabBarHeight() - insets.bottom;
-    const { defaultGroupEvents } = useEdt()
+    const { defaultGroupEvents, refreshEdt } = useEdt()
 
     const { checkUser, connexion, deconnexion, loading, user, recupDataUtilisateur, saveGroupSupabase, saveRappelSupabase } = useAuth();
     const { width: screenWidth } = Dimensions.get('window');
@@ -51,17 +54,117 @@ const Page = () => {
     // Stocker l'URL perso séparément pour pouvoir y revenir
     const [persoGroupUrl, setPersoGroupUrl] = useState<string | null>(null);
 
+    // État pour la recherche de groupe
+    const [groupSearchText, setGroupSearchText] = useState('');
+
+    // États pour la gestion des calendriers
+    const [calendarManagerVisible, setCalendarManagerVisible] = useState(false);
+    const [addCalendarModalVisible, setAddCalendarModalVisible] = useState(false);
+    const [customCalendars, setCustomCalendars] = useState<CustomCalendar[]>([]);
+
+    // États formulaire nouveau calendrier
+    const [newCalName, setNewCalName] = useState('');
+    const [newCalUrl, setNewCalUrl] = useState('');
+    const [newCalColor, setNewCalColor] = useState(COLORS[0]);
+
+
+    const loadCalendars = () => {
+        const cals = CalendarService.getCalendars();
+        setCustomCalendars(cals);
+    };
+
+    useEffect(() => {
+        loadCalendars();
+    }, []);
+
+    const handleAddCalendar = () => {
+        if (!newCalName.trim() || !newCalUrl.trim()) {
+            Alert.alert("Erreur", "Le nom et l'URL sont obligatoires.");
+            return;
+        }
+        if (!newCalUrl.startsWith('http')) {
+            Alert.alert("Erreur", "L'URL doit commencer par http:// ou https://");
+            return;
+        }
+
+        CalendarService.addCalendar({
+            name: newCalName.trim(),
+            url: newCalUrl.trim(),
+            color: newCalColor,
+            enabled: true
+        });
+
+        setNewCalName('');
+        setNewCalUrl('');
+        setNewCalColor(COLORS[Math.floor(Math.random() * COLORS.length)]);
+        setAddCalendarModalVisible(false);
+        loadCalendars();
+        refreshEdt();
+        Alert.alert("Succès", "Calendrier ajouté !");
+    };
+
+    const handleDeleteCalendar = (id: string) => {
+        Alert.alert(
+            "Supprimer",
+            "Voulez-vous vraiment supprimer ce calendrier ?",
+            [
+                { text: "Annuler", style: "cancel" },
+                {
+                    text: "Supprimer",
+                    style: "destructive",
+                    onPress: () => {
+                        CalendarService.deleteCalendar(id);
+                        loadCalendars();
+                        refreshEdt();
+                    }
+                }
+            ]
+        );
+    };
+
+    const handleToggleCalendar = (id: string) => {
+        CalendarService.toggleCalendar(id);
+        loadCalendars();
+        refreshEdt();
+    };
+
     const handleCasSuccess = async (url: string) => {
-        // On sauvegarde l'URL comme si c'était un "groupe"
-        await handleGroupSelection(url);
-        setPersoGroupUrl(url); // On garde en mémoire locale
-        Alert.alert("Succès", "Votre emploi du temps personnel a été récupéré et configuré !");
+        // Vérifier si cette URL est déjà présente dans les calendriers personnalisés
+        const existingCal = customCalendars.find(c => c.url === url);
+        if (existingCal) {
+            Alert.alert("Info", "Ce calendrier est déjà configuré dans 'Mes Calendriers'.");
+            return;
+        }
+
+        // Si un groupe est déjà défini et que ce n'est pas le planning perso actuel
+        if (group && group !== '' && group !== url) {
+            CalendarService.addCalendar({
+                name: "Planning Univ (Auto)",
+                url: url,
+                color: '#E91E63',
+                enabled: true
+            });
+            loadCalendars();
+            refreshEdt();
+            setPersoGroupUrl(url);
+            Alert.alert("Succès", "Votre planning a été ajouté à 'Mes Calendriers' sans remplacer votre groupe par défaut !");
+        } else {
+            // Comportement standard : devient le groupe principal
+            await handleGroupSelection(url);
+            setPersoGroupUrl(url);
+            Alert.alert("Succès", "Votre emploi du temps personnel a été récupéré et configuré !");
+        }
     };
 
     // Helper pour afficher le nom du groupe proprement
     const getGroupDisplayName = (grp: string) => {
         if (!grp) return "Sélectionner un groupe";
-        if (grp.startsWith('http')) return "Mon Planning (Perso)";
+
+        // Vérifier si c'est un calendrier personnalisé
+        const customCal = customCalendars.find(c => c.url === grp);
+        if (customCal) return `${customCal.name} (Perso)`;
+
+        if (grp.startsWith('http')) return "Mon Planning (URL)";
         return grp;
     };
 
@@ -73,23 +176,23 @@ const Page = () => {
                 const storedStatus = getNotificationStatus();
                 const isNotificationEnabled = status === 'granted' && storedStatus;
 
-                // console.log('Notification status:', {
-                // 	systemStatus: status,
-                // 	storedStatus,
-                // 	finalStatus: isNotificationEnabled
-                // });
-
                 setNotificationStatus(isNotificationEnabled);
 
+                if (isNotificationEnabled) {
+                    // Si activé, on replanifie (ça clean d'abord dans la fonction)
+                    const permission = await NotificationService.initNotifications();
+                    if (permission && data?.rappel && defaultGroupEvents.length > 0) {
+                        await NotificationService.planifierNotificationsEvents(defaultGroupEvents, data.rappel);
+                    }
+                } else {
+                    // Si désactivé, on s'assure que tout est clean (au cas où)
+                    await Notifications.cancelAllScheduledNotificationsAsync();
+                }
+
+                // On met à jour l'état pour l'affichage
                 const scheduled = await Notifications.getAllScheduledNotificationsAsync();
                 setScheduledNotifications(scheduled as never[]);
 
-                if (isNotificationEnabled && scheduled.length === 0) {
-                    const permission = await NotificationService.initNotifications();
-                    if (permission && data?.rappel) {
-                        await NotificationService.planifierNotificationsEvents(defaultGroupEvents, data.rappel);
-                    }
-                }
             } catch (error) {
                 console.error('Error initializing notifications:', error);
             }
@@ -155,9 +258,25 @@ const Page = () => {
     }, []);
 
     const handleGroupSelection = async (selectedGroup: string) => {
+        // Si c'est un groupe standard (pas une URL custom ni la vue combinée)
+        if (selectedGroup !== 'merged_view' && !selectedGroup.startsWith('http')) {
+            const existing = customCalendars.find(c => c.url === selectedGroup);
+            if (!existing) {
+                // On l'ajoute automatiquement pour qu'il soit disponible dans la Vue Combinée
+                CalendarService.addCalendar({
+                    name: `Univ (${selectedGroup})`,
+                    url: selectedGroup,
+                    color: '#E91E63',
+                    enabled: true
+                });
+                loadCalendars();
+            }
+        }
+
         setGroup(selectedGroup);
         setActiveModal(null);
         setIsInitialGroupSelection(false);
+        setGroupSearchText('');
         await saveGroupSupabase(selectedGroup);
     };
 
@@ -263,9 +382,19 @@ const Page = () => {
                     <View style={styles.separator} />
 
                     <SettingItem
+                        icon="calendar-outline"
+                        title="Gérer mes calendriers"
+                        description="Ajouter des calendriers externes (Google, etc.)"
+                        onPress={() => setCalendarManagerVisible(true)}
+                        controlType="button"
+                    />
+
+                    <View style={styles.separator} />
+
+                    <SettingItem
                         icon="people-outline"
                         title="Groupe par défaut"
-                        description={getGroupDisplayName(group)}
+                        description={getGroupDisplayName(group) === 'merged_view' ? 'Vue Combinée (Tous)' : getGroupDisplayName(group)}
                         onPress={() => setActiveModal('group')}
                         controlType="button"
                     />
@@ -364,44 +493,294 @@ const Page = () => {
                 theme={theme}
             />
 
+            {/* Modale Gestion Calendriers */}
+            <CustomModal
+                visible={calendarManagerVisible}
+                onClose={() => setCalendarManagerVisible(false)}
+                backgroundColor={theme.bg.base}
+                primaryColor={theme.colors.primary}
+                secondaryColor={theme.colors.secondary}
+                headerTitle="Mes Calendriers"
+                renderContent={() => {
+                    // Construction de la liste incluant le calendrier universitaire si défini
+                    const universityCalendar = group && !customCalendars.find(c => c.url === group) ? {
+                        id: 'univ_default',
+                        name: getGroupDisplayName(group),
+                        url: group,
+                        color: theme.colors.primary,
+                        enabled: true,
+                        isSystem: true
+                    } : null;
+
+                    const allCalendars = universityCalendar
+                        ? [universityCalendar, ...customCalendars]
+                        : customCalendars;
+
+                    return (
+                        <View style={{ height: screenHeight * 0.5 }}>
+                            <FlatList
+                                data={allCalendars as any[]}
+                                keyExtractor={(item) => item.id}
+                                ListEmptyComponent={
+                                    <Text style={{ color: theme.text.secondary, textAlign: 'center', marginTop: 20 }}>
+                                        Aucun calendrier ajouté.
+                                    </Text>
+                                }
+                                renderItem={({ item }) => (
+                                    <View style={{
+                                        flexDirection: 'row',
+                                        alignItems: 'center',
+                                        backgroundColor: theme.bg.alarme,
+                                        padding: 15,
+                                        borderRadius: 12,
+                                        marginBottom: 10,
+                                        opacity: item.isSystem ? 0.9 : 1
+                                    }}>
+                                        <View style={{
+                                            width: 12,
+                                            height: 12,
+                                            borderRadius: 6,
+                                            backgroundColor: item.color,
+                                            marginRight: 15
+                                        }} />
+
+                                        <View style={{ flex: 1 }}>
+                                            <Text style={{ color: theme.text.base, fontWeight: 'bold' }}>
+                                                {item.name} {item.isSystem && "(Principal)"}
+                                            </Text>
+                                            <Text style={{ color: theme.text.secondary, fontSize: 10 }} numberOfLines={1}>{item.url}</Text>
+                                        </View>
+
+                                        {!item.isSystem && (
+                                            <Switch
+                                                value={item.enabled}
+                                                onValueChange={() => handleToggleCalendar(item.id)}
+                                                trackColor={{ false: theme.bg.base, true: theme.colors.primary }}
+                                                thumbColor={'#fff'}
+                                                style={{ transform: [{ scaleX: 0.8 }, { scaleY: 0.8 }] }}
+                                            />
+                                        )}
+
+                                        {!item.isSystem && (
+                                            <TouchableOpacity
+                                                onPress={() => handleDeleteCalendar(item.id)}
+                                                style={{ marginLeft: 10, padding: 5 }}
+                                            >
+                                                <Ionicons name="trash-outline" size={20} color={theme.colors.danger} />
+                                            </TouchableOpacity>
+                                        )}
+                                    </View>
+                                )}
+                            />
+
+                            <TouchableOpacity
+                                style={{
+                                    backgroundColor: theme.colors.primary,
+                                    padding: 15,
+                                    borderRadius: 10,
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    marginTop: 15
+                                }}
+                                onPress={() => setAddCalendarModalVisible(true)}
+                            >
+                                <Text style={{ color: '#FFF', fontWeight: 'bold' }}>Ajouter un calendrier</Text>
+                            </TouchableOpacity>
+                        </View>
+                    );
+                }}
+            />
+
+            {/* Modale Ajout Calendrier */}
+            <CustomModal
+                visible={addCalendarModalVisible}
+                onClose={() => setAddCalendarModalVisible(false)}
+                backgroundColor={theme.bg.base}
+                primaryColor={theme.colors.primary}
+                secondaryColor={theme.colors.secondary}
+                headerTitle="Nouveau Calendrier"
+                renderContent={() => (
+                    <View style={{
+                        padding: 15,
+                        backgroundColor: theme.bg.alarme,
+                        borderRadius: 12
+                    }}>
+                        <Text style={{ color: theme.text.secondary, marginBottom: 5 }}>Nom du calendrier</Text>
+                        <TextInput
+                            style={{
+                                backgroundColor: theme.bg.base,
+                                color: theme.text.base,
+                                padding: 12,
+                                borderRadius: 8,
+                                marginBottom: 15,
+                                borderWidth: 1,
+                                borderColor: theme.text.secondary + '40'
+                            }}
+                            placeholder="Ex: Sport, Perso..."
+                            placeholderTextColor={theme.text.secondary}
+                            value={newCalName}
+                            onChangeText={setNewCalName}
+                        />
+
+                        <Text style={{ color: theme.text.secondary, marginBottom: 5 }}>URL (.ics)</Text>
+                        <TextInput
+                            style={{
+                                backgroundColor: theme.bg.base,
+                                color: theme.text.base,
+                                padding: 12,
+                                borderRadius: 8,
+                                marginBottom: 15,
+                                borderWidth: 1,
+                                borderColor: theme.text.secondary + '40'
+                            }}
+                            placeholder="https://..."
+                            placeholderTextColor={theme.text.secondary}
+                            value={newCalUrl}
+                            onChangeText={setNewCalUrl}
+                            autoCapitalize="none"
+                            autoCorrect={false}
+                        />
+
+                        <Text style={{ color: theme.text.secondary, marginBottom: 10 }}>Couleur</Text>
+                        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 20 }}>
+                            {COLORS.map(color => (
+                                <TouchableOpacity
+                                    key={color}
+                                    onPress={() => setNewCalColor(color)}
+                                    style={{
+                                        width: 30,
+                                        height: 30,
+                                        borderRadius: 15,
+                                        backgroundColor: color,
+                                        marginRight: 10,
+                                        borderWidth: newCalColor === color ? 3 : 0,
+                                        borderColor: theme.text.base
+                                    }}
+                                />
+                            ))}
+                        </ScrollView>
+
+                        <TouchableOpacity
+                            style={{
+                                backgroundColor: theme.colors.primary,
+                                padding: 15,
+                                borderRadius: 10,
+                                alignItems: 'center',
+                                justifyContent: 'center'
+                            }}
+                            onPress={handleAddCalendar}
+                        >
+                            <Text style={{
+                                color: '#FFF',
+                                fontWeight: 'bold'
+                            }}>
+                                Enregistrer
+                            </Text>
+                        </TouchableOpacity>
+                    </View>
+                )}
+            />
+
+
             <CustomModal
                 visible={activeModal === 'group'}
-                onClose={() => setActiveModal(null)}
+                onClose={() => {
+                    setActiveModal(null);
+                    setGroupSearchText('');
+                }}
                 backgroundColor={theme.bg.base}
                 primaryColor={theme.colors.primary}
                 secondaryColor={theme.colors.secondary}
                 headerTitle="⚠️ Changer le groupe par défaut ⚠️"
                 renderContent={() => {
-                    // On prépare la liste des groupes
+                    // On prépare la liste des groupes standards
                     const groupList = Object.keys(groupInfo);
-                    // Si on a une URL perso, on l'ajoute au début
-                    const data = persoGroupUrl ? [persoGroupUrl, ...groupList] : groupList;
+
+                    // On prépare la liste des calendriers persos (URLs)
+                    const customCalUrls = customCalendars.map(c => c.url);
+
+                    // Construction de la liste finale : [Vue Combinée, ...Calendriers Customs, ...Groupes Univ]
+
+                    let fullData = ['merged_view', ...customCalUrls, ...groupList];
+
+                    // Si on a une URL perso stockée qui n'est pas dans les calendriers custom, on l'ajoute (legacy)
+                    if (persoGroupUrl && !customCalUrls.includes(persoGroupUrl)) {
+                        fullData.splice(1, 0, persoGroupUrl);
+                    }
+
+                    // Dédoublonnage
+                    fullData = [...new Set(fullData)];
+
+                    // Filtrage par recherche
+                    const filteredData = fullData.filter(item => {
+                        let displayName = '';
+                        if (item === 'merged_view') displayName = 'Vue Combinée (Tous mes calendriers)';
+                        else displayName = getGroupDisplayName(item).toLowerCase();
+
+                        const search = groupSearchText.toLowerCase();
+                        return displayName.includes(search);
+                    });
 
                     return (
-                        <FlatList
-                            contentContainerStyle={{
-                                paddingBottom: screenHeight * 0.1,
-                            }}
-                            data={data}
-                            keyExtractor={(item) => item}
-                            renderItem={({ item, index }) => (
-                                <TouchableOpacity
-                                    style={[
-                                        styles.groupItem,
-                                        {
-                                            backgroundColor: group === item
-                                                ? theme.colors.primary
-                                                : `${theme.bg.tabBarActive}${index % 2 === 0 ? '20' : '10'}`,
-                                        }
-                                    ]}
-                                    onPress={() => handleGroupSelection(item)}
-                                >
-                                    <Text style={{ color: theme.text.base }}>
-                                        {getGroupDisplayName(item)}
-                                    </Text>
-                                </TouchableOpacity>
-                            )}
-                        />
+                        <View style={{ height: screenHeight * 0.7 }}>
+                            <TextInput
+                                style={{
+                                    backgroundColor: theme.bg.alarme,
+                                    color: theme.text.base,
+                                    padding: 12,
+                                    borderRadius: 12,
+                                    marginBottom: 10,
+                                    fontSize: 16
+                                }}
+                                placeholder="Rechercher un groupe..."
+                                placeholderTextColor={theme.text.secondary}
+                                value={groupSearchText}
+                                onChangeText={setGroupSearchText}
+                                autoCapitalize="none"
+                                autoCorrect={false}
+                            />
+                            <FlatList
+                                contentContainerStyle={{
+                                    paddingBottom: screenHeight * 0.1,
+                                }}
+                                data={filteredData}
+                                keyExtractor={(item) => item}
+                                initialNumToRender={20}
+                                maxToRenderPerBatch={20}
+                                windowSize={10}
+                                renderItem={({ item, index }) => {
+                                    const isMerged = item === 'merged_view';
+                                    const display = isMerged ? 'Vue Combinée (Tous mes calendriers)' : getGroupDisplayName(item);
+
+                                    return (
+                                        <TouchableOpacity
+                                            style={[
+                                                styles.groupItem,
+                                                {
+                                                    backgroundColor: group === item
+                                                        ? theme.colors.primary
+                                                        : (isMerged ? theme.colors.secondary + '20' : `${theme.bg.tabBarActive}${index % 2 === 0 ? '20' : '10'}`),
+                                                    borderWidth: isMerged ? 1 : 0,
+                                                    borderColor: theme.colors.primary
+                                                }
+                                            ]}
+                                            onPress={() => {
+                                                handleGroupSelection(item);
+                                                setGroupSearchText('');
+                                            }}
+                                        >
+                                            <Text style={{
+                                                color: theme.text.base,
+                                                fontWeight: isMerged ? 'bold' : 'normal',
+                                                fontSize: isMerged ? 16 : 14
+                                            }}>
+                                                {display}
+                                            </Text>
+                                        </TouchableOpacity>
+                                    );
+                                }}
+                            />
+                        </View>
                     );
                 }}
             />

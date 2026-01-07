@@ -88,12 +88,13 @@ export default function EventSemaine({ data }: EventSemaineProps) {
 		const now = dayjs();
 		const start = dayjs(event.start);
 		const end = dayjs(event.end);
+        const eventColor = event.color || theme.colors.primary;
 
 		if (now.isBefore(start)) {
 			return {
 				status: 'chevron-down',
 				timeText: `Commence dans ${getTimeRemaining(event.start)}`,
-				color: theme.colors.primary
+				color: eventColor
 			};
 		}
 
@@ -119,6 +120,8 @@ export default function EventSemaine({ data }: EventSemaineProps) {
 		const height = (endTime.diff(startTime, 'minute') / 60) * HOUR_HEIGHT;
 		const cancelled = isCancelled(event);
 		const eventStatus = getEventStatus(event);
+        
+        const eventColor = event.color || theme.colors.primary;
 
 		return (
 			<TouchableOpacity
@@ -129,7 +132,7 @@ export default function EventSemaine({ data }: EventSemaineProps) {
 					left: 2,
 					right: 2,
 					height,
-					backgroundColor: cancelled ? theme.colors.danger + '40' : theme.colors.primary + '80',
+					backgroundColor: cancelled ? theme.colors.danger + '40' : eventColor + 'CC', // +CC for ~80% opacity
 					borderRadius: 4,
 					padding: 4,
 					borderWidth: cancelled ? 1 : 0,

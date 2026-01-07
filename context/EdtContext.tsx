@@ -4,6 +4,7 @@ import dayjs from 'dayjs';
 import 'dayjs/locale/fr';
 import React, { createContext, ReactNode, useContext, useEffect, useState } from 'react';
 import { HyperplanningApi } from '@/functions/hyperplanning';
+import { CalendarService } from '@/functions/calendarService';
 
 interface EdtContextType {
 	allEvents: ICalEvent[];
@@ -36,19 +37,58 @@ export const EdtProvider = ({ children }: EdtProviderProps) => {
 			setLoading(true);
 			setError(null);
 			const userData = user;
+            
+            // Le groupe actif : soit celui passé en param (preview), soit celui de l'utilisateur
+            // Si 'groupe' est fourni, c'est une preview temporaire qui ne doit pas affecter les notifs
+            const isPreview = !!groupe;
+            const activeGroup = groupe || userData?.group;
 
-			if (groupe) {
-				const response = await HyperplanningApi.getClass(groupe);
-				setAllEvents(response.events);
-			} else {
-				if (userData?.group) {
-					const response = await HyperplanningApi.getClass(userData.group);
+			let mergedEvents: ICalEvent[] = [];
 
-					// Stocker les événements du groupe par défaut
-					setDefaultGroupEvents(response.events);
-					setAllEvents(response.events);
-				}
-			}
+            // Cas 1: Vue Combinée (Merged View)
+            if (activeGroup === 'merged_view') {
+                // On charge TOUS les calendriers activés
+                 const customCalendars = CalendarService.getCalendars().filter(c => c.enabled);
+                 
+                 const promises = customCalendars.map(async (calendar) => {
+                     try {
+                        const response = await HyperplanningApi.getClass(calendar.url);
+                        return response.events.map(evt => ({
+                            ...evt,
+                            color: calendar.color,
+                            sourceName: calendar.name
+                        }));
+                     } catch(e) { 
+                        console.error(`Erreur load ${calendar.name}`, e);
+                        return []; 
+                     }
+                 });
+
+                 const results = await Promise.all(promises);
+                 results.forEach(evts => mergedEvents.push(...evts));
+            
+            } else if (activeGroup) {
+                // Cas 2: Vue Individuelle (Focus sur un calendrier spécifique)
+                const response = await HyperplanningApi.getClass(activeGroup);
+                
+                // On essaie de trouver la couleur associée si elle existe dans mes calendriers
+                const linkedCal = CalendarService.getCalendars().find(c => c.url === activeGroup);
+                
+                mergedEvents = response.events.map(evt => ({
+                    ...evt,
+                    color: linkedCal?.color, 
+                    sourceName: linkedCal?.name
+                }));
+            }
+            
+            // Mise à jour des états
+            setAllEvents(mergedEvents);
+            
+            // On ne met à jour les événements par défaut (et donc les notifs) QUE si ce n'est pas une preview temporaire
+            if (!isPreview) {
+                setDefaultGroupEvents(mergedEvents);
+            }
+
 		} catch (err) {
 			setError(err instanceof Error ? err.message : 'Une erreur est survenue');
 		} finally {
@@ -56,7 +96,7 @@ export const EdtProvider = ({ children }: EdtProviderProps) => {
 		}
 	};
 
-	const getEventsForDate = (date: dayjs.Dayjs, groupe?: string): ICalEvent[] => {
+	const getEventsForDate = (date: dayjs.Dayjs, groupe?: string): ICalEvent[] => {		
 		const eventsToFilter = groupe ? defaultGroupEvents : allEvents;
 
 		return eventsToFilter.filter(event => {
@@ -68,11 +108,16 @@ export const EdtProvider = ({ children }: EdtProviderProps) => {
 
 	const getCoursSuivant = (): ICalEvent | null => {
 		const now = dayjs();
-		const events = defaultGroupEvents.filter(event =>
+
+		const events = allEvents.filter(event =>
 			dayjs(event.start).isAfter(now)
 			||
 			(dayjs(event.start).isBefore(now) && dayjs(event.end).isAfter(now))
 		);
+		
+		// Tri par date de début
+		events.sort((a, b) => dayjs(a.start).valueOf() - dayjs(b.start).valueOf());
+
 		if (events.length === 0) return null;
 		return events[0];
 	}

@@ -174,12 +174,13 @@ export default function EventList({nb = "all", estUnique = false, data}: EventLi
 		const now = dayjs();
 		const start = dayjs(event.start);
 		const end = dayjs(event.end);
+		const eventColor = event.color || theme.colors.primary || '#000000';
 
 		if (now.isBefore(start)) {
 			return {
 				status: 'upcoming',
 				timeText: `Commence dans ${getTimeRemaining(event.start)}`,
-				color: `${theme.colors.primary}`,
+				color: eventColor,
 				icon: 'chevron-down'
 			};
 		}
@@ -196,7 +197,7 @@ export default function EventList({nb = "all", estUnique = false, data}: EventLi
 		return {
 			status: 'ongoing',
 			timeText: `Se termine dans ${getTimeRemaining(event.end)}`,
-			color: '#4CAF50',
+			color: '#4CAF50', // Ongoing stays green usually, or we could use eventColor? Let's keep green for active status distinction.
 			icon: 'alarm-outline'
 		};
 	}, [theme.colors.primary, theme.colors.danger]);

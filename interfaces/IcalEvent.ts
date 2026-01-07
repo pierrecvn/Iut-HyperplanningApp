@@ -5,4 +5,7 @@ export interface ICalEvent {
 	start: Date;
 	end: Date;
 	location: string;
+	color?: string;
+	sourceName?: string;
+	[key: string]: any;
 }
