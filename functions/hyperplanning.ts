@@ -13,84 +13,48 @@ interface ApiError {
 	error: string;
 }
 
-
-const API_BASE_URL = 'https://api.sajima.fr/hyperplanning';
-
-const ApiError = (error: any): never => {
-	if (error.response) {
-		throw new Error(error.response.data?.error || 'Erreur serveur');
-	}
-	throw new Error('Erreur réseau <3 ');
-};
-
 // Class HyperplanningApi
 export class HyperplanningApi {
 
 	static async enVie(): Promise<object> {
-		try {
-			const response = await fetch(`${API_BASE_URL}/envie`);
-			const data = await response.json();
-			return data;
-		} catch (error) {
-			return ApiError(error);
-		}
+		return { status: "alive (local)" };
 	}
 
 	// Récupère l'emploi du temps d'une classe
 	static async getClass(group: string): Promise<EventsReponse> {
 		try {
-			const response = await fetch(`${API_BASE_URL}/class/${group}`);
-			if (!response.ok) {
-
-				const errorData: ApiError = await response.json();
-				throw new Error(errorData.error);
-			}
-			const data: EventsReponse = await response.json();
-
-			// Conversion des dates string en objets Date
-			data.events = data.events.map(event => ({
-				...event,
-				start: new Date(event.start),
-				end: new Date(event.end)
-			}));
-
-			return data;
+			const events = await fetchIcalEventsClass(group);
+			return {
+				group: group,
+				count: events.length,
+				events: events
+			};
 		} catch (error) {
-			return ApiError(error);
+			console.error(error);
+			throw new Error("Erreur lors de la récupération locale");
 		}
 	}
 
 	static async getClassAPI(group: string): Promise<ICalEvent[]> {
-
 		return fetchIcalEventsClass(group);
-
 	}
 
 	static async getSalleAPI(salle: string): Promise<ICalEvent[]> {
-
 		return fetchIcalEventsSalle(salle);
 	}
 
 	// Récupère l'emploi du temps d'une salle
 	static async getsalle(salle: string): Promise<EventsReponse> {
 		try {
-			const response = await fetch(`${API_BASE_URL}/salle/${salle}`);
-			if (!response.ok) {
-				const errorData: ApiError = await response.json();
-				throw new Error(errorData.error);
-			}
-			const data: EventsReponse = await response.json();
-
-			// Conversion des dates string en objets Date
-			data.events = data.events.map(event => ({
-				...event,
-				start: new Date(event.start),
-				end: new Date(event.end)
-			}));
-
-			return data;
+			const events = await fetchIcalEventsSalle(salle);
+			return {
+				salle: salle,
+				count: events.length,
+				events: events
+			};
 		} catch (error) {
-			return ApiError(error);
+			console.error(error);
+			throw new Error("Erreur lors de la récupération locale");
 		}
 	}
 }

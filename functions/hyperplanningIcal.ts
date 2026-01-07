@@ -1,4 +1,5 @@
 import ICAL from 'ical.js';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import classInfoData from './utils/edtInfo.json';
 import salleInfoData from './utils/salleInfo.json';
 
@@ -22,11 +23,10 @@ const param = "643d5b312e2e36325d2666683d3126663d31";
 const edtInfoDataClass: EdtInfoData = classInfoData;
 const edtInfoDataSalle: EdtInfoData = salleInfoData;
 
-
-
 async function fetchIcalEvents(edtInfo: string, isClass: boolean): Promise<IcalEvent[]> {
 	const edtInfoData = isClass ? edtInfoDataClass : edtInfoDataSalle;
 	const idICal = edtInfoData[edtInfo];
+	const cacheKey = `ical_${isClass ? 'class' : 'salle'}_${edtInfo}`;
 
 	if (!idICal) {
 		console.error(`Pas d'ID : ${edtInfo}`);
@@ -38,8 +38,34 @@ async function fetchIcalEvents(edtInfo: string, isClass: boolean): Promise<IcalE
 
 	try {
 		const response = await fetch(url);
+		if (!response.ok) throw new Error("Network response was not ok");
+		
 		const icsData = await response.text();
+		
+		// Sauvegarde dans le cache
+		await AsyncStorage.setItem(cacheKey, icsData);
 
+		return parseIcalData(icsData, edtInfo);
+
+	} catch (error) {
+		console.log(`Erreur fetch, tentative de chargement depuis le cache pour : ${edtInfo}`);
+		try {
+			const cachedData = await AsyncStorage.getItem(cacheKey);
+			if (cachedData) {
+				console.log(`Chargement depuis le cache pour ${edtInfo}`);
+				return parseIcalData(cachedData, edtInfo);
+			}
+		} catch (cacheError) {
+			console.error("Erreur lors de la lecture du cache", cacheError);
+		}
+		
+		console.error(`Impossible de fetch l'edt et pas de cache : ${error}`);
+		return [];
+	}
+}
+
+function parseIcalData(icsData: string, edtInfo: string): IcalEvent[] {
+	try {
 		const jcalData = ICAL.parse(icsData);
 		const component = new ICAL.Component(jcalData);
 		const vevents = component.getAllSubcomponents('vevent');
@@ -70,9 +96,8 @@ async function fetchIcalEvents(edtInfo: string, isClass: boolean): Promise<IcalE
 
 		console.log(`fetch ${events.length} pour ${edtInfo}`);
 		return events;
-
-	} catch (error) {
-		console.error(`Impossible de fetch l'edt : ${error}`);
+	} catch (e) {
+		console.error("Erreur parsing ICAL", e);
 		return [];
 	}
 }

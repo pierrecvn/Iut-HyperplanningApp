@@ -1,59 +1,60 @@
 {
-	"expo": {
-		"name": "Iut-HyperplanningApp",
-		"slug": "Iut-HyperplanningApp",
-		"version": "1.1.5",
-		"orientation": "portrait",
-		"icon": "./assets/images/icon.png",
-		"scheme": "iuthyperplanningapp",
-		"userInterfaceStyle": "automatic",
-		"splash": {
-			"image": "./assets/images/splash.png",
-			"resizeMode": "cover",
-			"backgroundColor": "#FFFFFF"
-		},
-		"ios": {
-			"supportsTablet": true,
-			"bundleIdentifier": "fr.sajima.IutHyperplanningApp"
-		},
-		"android": {
-			"adaptiveIcon": {
-				"foregroundImage": "./assets/images/adaptive-icon.png",
-				"backgroundColor": "#FFFFFF"
-			},
-			"package": "fr.sajima.IutHyperplanningApp",
-			"softwareKeyboardLayoutMode": "pan",
-			"permissions": [
-				"RECEIVE_BOOT_COMPLETED",
-				"SCHEDULE_EXACT_ALARM",
-				"USE_EXACT_ALARM",
-				"POST_NOTIFICATIONS"
-			]
-		},
-		"web": {
-			"bundler": "metro",
-			"output": "static",
-			"favicon": "./assets/images/favicon.png"
-		},
-		"plugins": [
-			"expo-router",
-			"expo-secure-store",
-			"expo-navigation-bar",
-			"expo-font"
-		],
-		"experiments": {
-			"typedRoutes": true
-		},
-		"extra": {
-			"eas": {
-				"projectId": "42c66838-9be3-4d7d-b84c-6e1ad68c8858"
-			}
-		},
-		"runtimeVersion": {
-			"policy": "appVersion"
-		},
-		"updates": {
-			"url": "https://u.expo.dev/42c66838-9be3-4d7d-b84c-6e1ad68c8858"
-		}
-	}
+  "expo": {
+    "name": "Iut-HyperplanningApp",
+    "slug": "Iut-HyperplanningApp",
+    "version": "1.1.5",
+    "orientation": "portrait",
+    "icon": "./assets/images/icon.png",
+    "scheme": "iuthyperplanningapp",
+    "userInterfaceStyle": "automatic",
+    "splash": {
+      "image": "./assets/images/splash.png",
+      "resizeMode": "cover",
+      "backgroundColor": "#FFFFFF"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "fr.sajima.IutHyperplanningApp"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/adaptive-icon.png",
+        "backgroundColor": "#FFFFFF"
+      },
+      "package": "fr.sajima.IutHyperplanningApp",
+      "softwareKeyboardLayoutMode": "pan",
+      "permissions": [
+        "RECEIVE_BOOT_COMPLETED",
+        "SCHEDULE_EXACT_ALARM",
+        "USE_EXACT_ALARM",
+        "POST_NOTIFICATIONS"
+      ]
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "static",
+      "favicon": "./assets/images/favicon.png"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      "expo-navigation-bar",
+      "expo-font",
+      "expo-background-task"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    },
+    "extra": {
+      "eas": {
+        "projectId": "42c66838-9be3-4d7d-b84c-6e1ad68c8858"
+      }
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/42c66838-9be3-4d7d-b84c-6e1ad68c8858"
+    }
+  }
 }

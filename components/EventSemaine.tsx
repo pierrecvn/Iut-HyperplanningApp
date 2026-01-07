@@ -48,10 +48,16 @@ const isCancelled = (event: ICalEvent): boolean => {
 	return event.summary.toLowerCase().startsWith('cours annulé');
 };
 
-export default function EventSemaine() {
+interface EventSemaineProps {
+	data?: ICalEvent[];
+}
+
+export default function EventSemaine({ data }: EventSemaineProps) {
 	const {theme} = useTheme();
-	const {selectedDate, allEvents} = useEdt();
+	const {selectedDate, allEvents: contextEvents} = useEdt();
 	const [selectedEvent, setSelectedEvent] = React.useState<ICalEvent | null>(null);
+
+	const allEvents = data || contextEvents;
 
 	const weekDays = useMemo(() => {
 		const startOfWeek = selectedDate.startOf('week');

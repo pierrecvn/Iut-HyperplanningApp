@@ -24,6 +24,7 @@ import {useAuth} from "@/context/AuthContext";
 interface EventListProps {
 	nb?: string;
 	estUnique?: boolean;
+	data?: ICalEvent[];
 }
 
 type EventStatus = {
@@ -64,7 +65,7 @@ const isCancelled = (event: ICalEvent): boolean => {
 	return event.summary.toLowerCase().startsWith('cours annulé');
 };
 
-export default function EventList({nb = "all", estUnique = false}: EventListProps) {
+export default function EventList({nb = "all", estUnique = false, data}: EventListProps) {
 	const {theme} = useTheme();
 	const {user} = useAuth();
 
@@ -80,16 +81,24 @@ export default function EventList({nb = "all", estUnique = false}: EventListProp
 	const {width: screenWidth} = Dimensions.get('window');
 
 	const events = useMemo(() => {
-		const dateToUse = estUnique ? dayjs() : selectedDate;
-		const allEvents = estUnique
-			? getEventsForDate(dateToUse, user?.group)
-			: getEventsForDate(dateToUse);
+		let listEvents: ICalEvent[] = [];
+
+		if (data) {
+			// Filter provided data by selectedDate
+			listEvents = data.filter(event => dayjs(event.start).isSame(selectedDate, 'day'));
+		} else {
+			const dateToUse = estUnique ? dayjs() : selectedDate;
+			listEvents = estUnique
+				? getEventsForDate(dateToUse, user?.group)
+				: getEventsForDate(dateToUse);
+		}
+		
 		// console.log("allEvents : ", allEvents);
 
-		if (nb === "all") return allEvents;
+		if (nb === "all") return listEvents;
 
 		const now = dayjs();
-		const upcomingEvents = allEvents.filter(event =>
+		const upcomingEvents = listEvents.filter(event =>
 			dayjs(event.start).isAfter(now) ||
 			(dayjs(event.start).isBefore(now) && dayjs(event.end).isAfter(now))
 		);
@@ -97,8 +106,8 @@ export default function EventList({nb = "all", estUnique = false}: EventListProp
 		upcomingEvents.sort((a, b) => dayjs(a.start).valueOf() - dayjs(b.start).valueOf());
 
 		const count = parseInt(nb);
-		return isNaN(count) ? allEvents : upcomingEvents.slice(0, count);
-	}, [getEventsForDate, estUnique ? null : selectedDate, nb, user?.group]);
+		return isNaN(count) ? listEvents : upcomingEvents.slice(0, count);
+	}, [getEventsForDate, estUnique ? null : selectedDate, nb, user?.group, data]);
 
 	const eventsAvecPauseMidi = useMemo(() => {
 		const eventsWithBreakInfo = [];
