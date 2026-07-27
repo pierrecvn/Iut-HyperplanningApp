@@ -2,6 +2,7 @@ import CasLoginModal from '@/components/CasLoginModal';
 import CustomModal from '@/components/CustomModal';
 import { CalendarManager } from '@/components/parametres/CalendarManager';
 import { GroupSelector } from '@/components/parametres/GroupSelector';
+import { NotificationSettings } from '@/components/parametres/NotificationSettings';
 import SettingItem from "@/components/SettingItem";
 import { useAuth } from '@/context/AuthContext';
 import { useEdt } from "@/context/EdtContext";
@@ -47,8 +48,6 @@ const Page = () => {
     const [activeModal, setActiveModal] = useState<ModalType>(null);
     const [isInitialGroupSelection, setIsInitialGroupSelection] = useState(false);
     const [griette, setGriette] = useState(false);
-    const [notificationStatus, setNotificationStatus] = useState(false);
-    const [scheduledNotifications, setScheduledNotifications] = useState([]);
 
     // États pour le login CAS via WebView
     const [casModalVisible, setCasModalVisible] = useState(false);
@@ -85,61 +84,6 @@ const Page = () => {
             Alert.alert("Succès", "Votre emploi du temps personnel a été récupéré et configuré !");
         }
     };
-
-    useEffect(() => {
-        const initializeNotifications = async () => {
-            try {
-
-                const { status } = await Notifications.getPermissionsAsync();
-                const storedStatus = getNotificationStatus();
-                const isNotificationEnabled = status === 'granted' && storedStatus;
-
-                setNotificationStatus(isNotificationEnabled);
-
-                if (isNotificationEnabled) {
-                    // Si activé, on replanifie (ça clean d'abord dans la fonction)
-                    const permission = await NotificationService.initNotifications();
-                    if (permission && data?.rappel && defaultGroupEvents.length > 0) {
-                        await NotificationService.planifierNotificationsEvents(defaultGroupEvents, data.rappel);
-                    }
-                } else {
-                    // Si désactivé, on s'assure que tout est clean (au cas où)
-                    await Notifications.cancelAllScheduledNotificationsAsync();
-                }
-
-                // On met à jour l'état pour l'affichage
-                const scheduled = await Notifications.getAllScheduledNotificationsAsync();
-                setScheduledNotifications(scheduled as never[]);
-
-            } catch (error) {
-                console.error('Error initializing notifications:', error);
-            }
-        };
-
-        initializeNotifications();
-    }, [data?.rappel, defaultGroupEvents]);
-
-    const handleNotificationToggle = async () => {
-        const newStatus = !notificationStatus;
-
-        if (newStatus) {
-            const permission = await NotificationService.initNotifications();
-            if (permission && data?.rappel) {
-                await NotificationService.planifierNotificationsEvents(defaultGroupEvents, data.rappel);
-                const scheduled = await NotificationService.getNotificationsPlanifiees();
-                setScheduledNotifications(scheduled as never);
-            }
-        } else {
-            await Notifications.cancelAllScheduledNotificationsAsync();
-            setScheduledNotifications([]);
-        }
-
-        setNotificationStatus(newStatus);
-        await saveNotificationStatus(newStatus);
-    };
-
-
-
 
     useEffect(() => {
         const initializeGroup = async () => {
@@ -197,16 +141,12 @@ const Page = () => {
         await saveGroupSupabase(selectedGroup);
     };
 
+    // La replanification qui suivait cet enregistrement appartient désormais à
+    // NotificationSettings, qui possède l'état d'activation.
     const handleRappelSelection = async (selectedRappel: number) => {
         setRappel(selectedRappel);
         setActiveModal(null);
         await saveRappelSupabase(selectedRappel);
-
-        if (notificationStatus) {
-            await NotificationService.planifierNotificationsEvents(defaultGroupEvents, selectedRappel);
-            const scheduled = await NotificationService.getNotificationsPlanifiees();
-            setScheduledNotifications(scheduled as never);
-        }
     }
 
 
@@ -261,24 +201,14 @@ const Page = () => {
                     backgroundColor: theme.bg.alarme,
                     minWidth: screenWidth * 0.9
                 }]}>
-                    <SettingItem
-                        icon="notifications-outline"
-                        title="Activer les notifications"
-                        description={notificationStatus ? `Vous avez ${scheduledNotifications.length} notifications planifiées` : `Activer les notifications pour recevoir des rappels ${rappel} minutes avant vos cours`}
-                        value={notificationStatus}
-                        onValueChange={handleNotificationToggle}
-                        controlType="switch"
-                    />
-
-                    <View style={styles.separator} />
-
-                    <SettingItem
-                        icon="time-outline"
-                        title="Rappels"
-                        description={`Fréquence de rappel: ${rappel} minutes`}
-                        onPress={() => setActiveModal('rappel')}
-                        controlType="button"
-                        disabled={!notificationStatus}
+                    <NotificationSettings
+                        rappel={rappel}
+                        scheduleRappel={data?.rappel}
+                        events={defaultGroupEvents}
+                        modalVisible={activeModal === 'rappel'}
+                        onOpenModal={() => setActiveModal('rappel')}
+                        onCloseModal={() => setActiveModal(null)}
+                        onSelectRappel={handleRappelSelection}
                     />
                 </View>
 
@@ -412,35 +342,6 @@ const Page = () => {
                 theme={theme}
             />
 
-
-            <CustomModal
-                visible={activeModal === 'rappel'}
-                onClose={() => setActiveModal(null)}
-                backgroundColor={theme.bg.base}
-                primaryColor={theme.colors.primary}
-                secondaryColor={theme.colors.secondary}
-                headerTitle="Changer la fréquence de rappel"
-                renderContent={() => (
-                    <FlatList
-                        data={[5, 10, 15, 20, 30, 45, 50, 60]}
-                        keyExtractor={(item: number) => item.toString()}
-                        renderItem={({ item, index }) => (
-                            <TouchableOpacity
-                                style={[
-                                    styles.groupItem,
-                                    {
-                                        backgroundColor: rappel === item
-                                            ? theme.colors.primary
-                                            : `${theme.bg.tabBarActive}${index % 2 === 0 ? '20' : '10'}`,
-                                    }
-                                ]}
-                                onPress={() => handleRappelSelection(item)}
-                            >
-                                <Text style={{ color: theme.text.base }}>{item + ' min'}</Text>
-                            </TouchableOpacity>
-                        )}></FlatList>
-                )}
-            />
 
             <CustomModal
                 visible={activeModal === 'info'}

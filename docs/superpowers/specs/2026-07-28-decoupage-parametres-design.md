@@ -101,6 +101,23 @@ Pour un **nouvel utilisateur n'ayant ni groupe ni rappel**, la seconde affectati
 
 La raison est la même qu'au chantier 1 pour `linear-gradient` et au chantier 2 pour `expo/fetch` : ne pas mêler un déplacement de code à comportement constant et un changement de comportement volontaire. Si un écran se met à mal se comporter, on doit pouvoir dire lequel des deux commits en est responsable.
 
+## Second bug latent — la fréquence de rappel qui régresse
+
+Découvert en extrayant `NotificationSettings`. C'est la conséquence concrète du doublon `data` / `user` signalé plus haut.
+
+Il existe **deux sources de vérité** pour la fréquence de rappel :
+
+| Usage | Source |
+|---|---|
+| Planification réelle des notifications | `data.rappel` — instantané pris au montage |
+| Affichage dans l'écran et la modale | `rappel` — état mis à jour à chaque choix |
+
+`setRappel(selectedRappel)` ne met pas `data` à jour. La replanification immédiate qui suit un changement est correcte, puisqu'elle reçoit `selectedRappel` en argument. Mais toute replanification ultérieure relit `data.rappel`.
+
+**Reproduction :** passer le rappel de 15 à 30 minutes, puis désactiver et réactiver les notifications. Les notifications sont replanifiées à 15 minutes alors que l'écran affiche 30.
+
+Même traitement que le bug des modales : le découpage préserve ce comportement à l'identique, la correction va dans le commit séparé de l'étape 7. La correction consiste à supprimer l'état `data` et à lire `user` directement, ou à propager `rappel` comme unique source.
+
 ## Plan d'exécution
 
 Un commit par étape, chacun vérifié avant le suivant.
