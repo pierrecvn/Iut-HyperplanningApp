@@ -47,14 +47,20 @@ export default function EventList({nb = "all", estUnique = false, data}: EventLi
 
 	const {events, eventsAvecPauseMidi, courseDayStats} = useEventsAffichage({nb, estUnique, data});
 
+	// Rafraîchit les comptes à rebours chaque seconde, uniquement tant qu'une
+	// modale est ouverte. Le compteur ne sert qu'à provoquer un rendu.
+	//
+	// La version précédente recréait selectedEvent à chaque tick alors que
+	// l'effet en dépendait : l'intervalle était donc détruit et recréé toutes
+	// les secondes, et l'objet événement changeait d'identité pour rien.
+	const [, setTick] = React.useState(0);
+	const modaleOuverte = selectedEvent !== null;
+
 	React.useEffect(() => {
-		const timer = setInterval(() => {
-			if (selectedEvent) {
-				setSelectedEvent({...selectedEvent});
-			}
-		}, 1000);
+		if (!modaleOuverte) return;
+		const timer = setInterval(() => setTick(t => t + 1), 1000);
 		return () => clearInterval(timer);
-	}, [selectedEvent]);
+	}, [modaleOuverte]);
 
 	const getEventStatus = useCallback(
 		(event: ICalEvent): EventStatus =>
