@@ -1,5 +1,7 @@
 import CasLoginModal from '@/components/CasLoginModal';
-import CustomModal from '@/components/CustomModal';
+import { AboutSetting } from '@/components/parametres/AboutSetting';
+import { AccountSection } from '@/components/parametres/AccountSection';
+import { AppearanceSettings } from '@/components/parametres/AppearanceSettings';
 import { CalendarManager } from '@/components/parametres/CalendarManager';
 import { GroupSelector } from '@/components/parametres/GroupSelector';
 import { NotificationSettings } from '@/components/parametres/NotificationSettings';
@@ -7,39 +9,31 @@ import SettingItem from "@/components/SettingItem";
 import { useAuth } from '@/context/AuthContext';
 import { useEdt } from "@/context/EdtContext";
 import { useTheme } from '@/context/ThemeContext';
-import { getGroupDisplayName } from '@/functions/groupDisplay';
+import { getPersonalIcalUrl } from "@/functions/supabase";
 import { useCalendars } from '@/hooks/useCalendars';
-import { NotificationService } from "@/functions/NotificationService";
-import { getNotificationStatus, getPersonalIcalUrl, removeUserAllData, saveNotificationStatus } from "@/functions/supabase";
-import groupInfo from '@/functions/utils/edtInfo.json';
 import { UserData } from "@/interfaces/UserData";
 import packageJson from '@/package.json';
-import { Ionicons } from "@expo/vector-icons";
 import { useBottomTabBarHeight } from "expo-router/js-tabs";
 import { useHeaderHeight } from "expo-router/react-navigation";
 import dayjs from 'dayjs';
 import 'dayjs/locale/fr';
-import * as Notifications from "expo-notifications";
 import React, { useEffect, useState } from 'react';
-import { Alert, Dimensions, Image, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
-import { FlatList, ScrollView, } from 'react-native-gesture-handler';
+import { Alert, Dimensions, Image, StyleSheet, Text, View } from 'react-native';
+import { ScrollView } from 'react-native-gesture-handler';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 dayjs.locale('fr');
-
-const { height: screenHeight } = Dimensions.get('window');
-
 
 type ModalType = 'group' | 'calendar' | 'info' | 'rappel' | 'warning' | null;
 
 const Page = () => {
     const insets = useSafeAreaInsets();
     const headerHeight = useHeaderHeight() - insets.top;
-    const { theme, isDark, toggleTheme, useSystemTheme, isSystemTheme, useRandomTheme, isRandomTheme } = useTheme();
+    const { theme } = useTheme();
     const BOTTOM_PADDING = useBottomTabBarHeight() - insets.bottom;
     const { defaultGroupEvents, refreshEdt } = useEdt()
 
-    const { checkUser, connexion, deconnexion, loading, user, recupDataUtilisateur, saveGroupSupabase, saveRappelSupabase } = useAuth();
+    const { user, saveGroupSupabase, saveRappelSupabase } = useAuth();
     const { width: screenWidth } = Dimensions.get('window');
 
     const [group, setGroup] = useState<string>('');
@@ -47,7 +41,6 @@ const Page = () => {
     const [data, setData] = useState<UserData | null>();
     const [activeModal, setActiveModal] = useState<ModalType>(null);
     const [isInitialGroupSelection, setIsInitialGroupSelection] = useState(false);
-    const [griette, setGriette] = useState(false);
 
     // États pour le login CAS via WebView
     const [casModalVisible, setCasModalVisible] = useState(false);
@@ -249,40 +242,15 @@ const Page = () => {
                     />
 
                     <View style={styles.separator} />
-                    <SettingItem
-                        icon="moon-outline"
-                        title="Theme sombre"
-                        description="Activer le thème sombre de l'application"
-                        value={isDark}
-                        onValueChange={toggleTheme}
-                        controlType="switch"
-                    />
-                    <SettingItem
-                        icon="phone-portrait-outline"
-                        title="Theme système"
-                        description="Utiliser le thème de l'appareil"
-                        value={isSystemTheme}
-                        onValueChange={useSystemTheme}
-                        controlType="switch"
-                    />
-                    <SettingItem
-                        icon="shuffle-outline"
-                        title="Thème aléatoire"
-                        description="Changer de thème à chaque démarrage"
-                        value={isRandomTheme}
-                        onValueChange={useRandomTheme}
-                        controlType="switch"
-                    />
+
+                    <AppearanceSettings />
 
                     <View style={styles.separator} />
 
-                    <SettingItem
-                        icon="information-circle-outline"
-                        title="À propos"
-                        description={`Version ${packageJson.version}`}
-                        controlType="icon"
-                        rightIcon="chevron-forward"
-                        onPress={() => { setActiveModal('info') }}
+                    <AboutSetting
+                        modalVisible={activeModal === 'info'}
+                        onOpenModal={() => setActiveModal('info')}
+                        onCloseModal={() => setActiveModal(null)}
                     />
                 </View>
 
@@ -296,38 +264,11 @@ const Page = () => {
                     marginBottom: 40
                 }]}>
 
-                    <SettingItem
-                        icon="log-out-outline"
-                        title="Se déconnecter"
-                        description="Fermer votre session actuelle"
-                        value={user ? true : false}
-                        onValueChange={deconnexion}
-                        controlType="icon"
-                        rightIcon={'log-out-outline'}
-                        customStyle={{ color: theme.colors.danger }}
-                        // disabled={true}
-                        onPress={() => { deconnexion() }}
+                    <AccountSection
+                        modalVisible={activeModal === 'warning'}
+                        onOpenModal={() => setActiveModal('warning')}
+                        onCloseModal={() => setActiveModal(null)}
                     />
-
-                    {user ? (
-                        <>
-                            <View style={styles.separator} />
-                            <SettingItem
-                                icon="trash-outline"
-                                title="Supprimer mon compte"
-                                description="Cette action est irréversible"
-                                value={user ? true : false}
-                                // onValueChange={removeUserAllData}
-                                onValueChange={() => setActiveModal('warning')}
-                                controlType="icon"
-                                rightIcon={'alert-circle-outline'}
-                                customStyle={{ color: theme.colors.danger }}
-                                onPress={async () => {
-                                    setActiveModal('warning');
-                                }}
-                            />
-                        </>
-                    ) : null}
                 </View>
 
                 <View style={{ alignItems: 'center', marginBottom: 20 }}>
@@ -343,177 +284,6 @@ const Page = () => {
             />
 
 
-            <CustomModal
-                visible={activeModal === 'info'}
-                onClose={() => setActiveModal(null)}
-                backgroundColor={theme.bg.base}
-                primaryColor={theme.colors.primary}
-                secondaryColor={theme.colors.secondary}
-                headerTitle="Informations sur l'application"
-                renderContent={() => (
-                    <View style={{
-                        padding: 15,
-                        backgroundColor: theme.bg.alarme,
-                        borderRadius: 12
-                    }}>
-                        <View style={{
-                            flexDirection: 'row',
-                            alignItems: 'center',
-                            marginBottom: 15
-                        }}>
-                            <Ionicons
-                                name="information-circle-outline"
-                                size={24}
-                                color={theme.colors.primary}
-                            />
-                            <Text style={[
-                                styles.settingTitle,
-                                {
-                                    color: theme.text.base,
-                                    marginLeft: 10
-                                }
-                            ]}>
-                                Détails de l'Application
-                            </Text>
-                        </View>
-
-                        <View style={{
-                            backgroundColor: theme.bg.base,
-                            borderRadius: 10,
-                            padding: 15
-                        }}>
-                            <Text style={[
-                                styles.settingDescription,
-                                {
-                                    color: theme.text.secondary,
-                                    marginBottom: 8
-                                }
-                            ]}>
-                                <Text>Nom - </Text>
-                                <Text style={{ fontWeight: '900' }}>{packageJson.name}</Text>
-                            </Text>
-                            <View style={styles.separator} />
-                            <Text style={[
-                                styles.settingDescription,
-                                {
-                                    color: theme.text.secondary,
-                                    marginBottom: 8
-                                }
-                            ]}>
-                                <Text>Version - </Text>
-                                <Text style={{ fontWeight: '900' }}>{packageJson.version}</Text>
-                            </Text>
-                            <View style={styles.separator} />
-
-
-                            <Text style={[
-                                styles.settingDescription,
-                                {
-                                    color: theme.text.secondary,
-                                    marginBottom: 8
-                                }
-                            ]}>
-                                <Text>Design - </Text>
-                                <Text onLongPress={() => { setGriette(true) }} style={[{ fontWeight: '900', fontSize: 14, color: theme.text.secondary }]} >Cazo Joey </Text>
-                                <Text style={[{ fontWeight: '900', fontSize: 14 }]}>
-                                    && Cauvin Pierre
-                                </Text>
-                                {griette ? '\nEncore un projet où griette a servi à rien' : null}
-
-                            </Text>
-
-                            <View style={styles.separator} />
-                            <Text style={[
-                                styles.settingDescription,
-                                {
-                                    color: theme.text.secondary
-                                }
-                            ]}>
-                                <Text>Développement - </Text>
-                                <Text style={{ fontWeight: 'bold' }}>Cauvin Pierre </Text>
-                            </Text>
-
-                        </View>
-                    </View>
-                )}
-            />
-
-            <CustomModal
-                visible={activeModal === 'warning'}
-                onClose={() => setActiveModal(null)}
-                backgroundColor={theme.bg.base}
-                primaryColor="#4CAF50"
-                secondaryColor={theme.colors.danger}
-                headerTitle="Suppression totale des données"
-                renderContent={() => (
-                    <View style={{
-                        padding: 15,
-                        backgroundColor: theme.bg.alarme,
-                        borderRadius: 12
-                    }}>
-                        <View style={{
-                            flexDirection: 'row',
-                            alignItems: 'center',
-                            marginBottom: 15
-                        }}>
-                            <Ionicons
-                                name="warning-outline"
-                                size={24}
-                                color={theme.colors.danger}
-                            />
-                            <Text style={[
-                                styles.settingTitle,
-                                {
-                                    color: theme.colors.danger,
-                                    marginLeft: 10
-                                }
-                            ]}>
-                                Suppression totale des données
-                            </Text>
-                        </View>
-
-                        <View style={{
-                            backgroundColor: theme.bg.base,
-                            borderRadius: 10,
-                            padding: 15
-                        }}>
-                            <Text style={[
-                                styles.settingDescription,
-                                {
-                                    color: theme.text.secondary,
-                                    marginBottom: 8
-                                }
-                            ]}>
-                                <Text>Êtes-vous sûr de vouloir supprimer toutes vos données ?</Text>
-                            </Text>
-                            <View style={styles.separator} />
-
-                            <TouchableOpacity
-                                style={{
-                                    backgroundColor: theme.colors.danger,
-                                    padding: 15,
-                                    borderRadius: 10,
-                                    alignItems: 'center',
-                                    justifyContent: 'center'
-                                }}
-                                onPress={async () => {
-                                    await removeUserAllData();
-                                    deconnexion();
-                                    setActiveModal(null);
-                                }}
-                            >
-                                <Text style={{
-                                    color: theme.text.base,
-                                    fontWeight: 'bold'
-                                }}>
-                                    Supprimer
-                                </Text>
-                            </TouchableOpacity>
-                        </View>
-                    </View>
-
-                )}
-            />
 
 
         </SafeAreaView>
@@ -575,18 +345,6 @@ const styles = StyleSheet.create({
         fontSize: 14,
         marginBottom: 8,
     },
-    badgeContainer: {
-        backgroundColor: 'rgba(255, 255, 255, 0.2)',
-        paddingHorizontal: 8,
-        paddingVertical: 4,
-        borderRadius: 8,
-        alignSelf: 'flex-start',
-    },
-    badgeText: {
-        color: '#FFF',
-        fontSize: 12,
-        fontWeight: 'bold',
-    },
     statsContainer: {
         flexDirection: 'row',
         justifyContent: 'space-around',
@@ -610,37 +368,10 @@ const styles = StyleSheet.create({
         width: 1,
         height: '60%',
     },
-    settingItem: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 10,
-        paddingVertical: 12,
-        paddingHorizontal: 8,
-    },
-    settingTexts: {
-        flex: 1,
-    },
-    settingTitle: {
-        fontSize: 16,
-        fontWeight: '500',
-        marginBottom: 2,
-    },
-    settingDescription: {
-        fontSize: 13,
-        opacity: 0.7,
-    },
-    switchContainer: {
-        justifyContent: 'center',
-        alignItems: 'center',
-        paddingLeft: 10,
-    },
     separator: {
         height: 1,
         backgroundColor: 'rgba(0, 0, 0, 0.05)',
         marginVertical: 4,
-    },
-    groupItem: {
-        padding: 15,
     },
 });
 
