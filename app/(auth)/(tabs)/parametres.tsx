@@ -1,6 +1,7 @@
 import CasLoginModal from '@/components/CasLoginModal';
 import CustomModal from '@/components/CustomModal';
 import { CalendarManager } from '@/components/parametres/CalendarManager';
+import { GroupSelector } from '@/components/parametres/GroupSelector';
 import SettingItem from "@/components/SettingItem";
 import { useAuth } from '@/context/AuthContext';
 import { useEdt } from "@/context/EdtContext";
@@ -53,9 +54,6 @@ const Page = () => {
     const [casModalVisible, setCasModalVisible] = useState(false);
     // Stocker l'URL perso séparément pour pouvoir y revenir
     const [persoGroupUrl, setPersoGroupUrl] = useState<string | null>(null);
-
-    // État pour la recherche de groupe
-    const [groupSearchText, setGroupSearchText] = useState('');
 
     // Liste des calendriers personnalisés : un seul état, partagé par le
     // gestionnaire de calendriers et le sélecteur de groupe.
@@ -195,7 +193,7 @@ const Page = () => {
         setGroup(selectedGroup);
         setActiveModal(null);
         setIsInitialGroupSelection(false);
-        setGroupSearchText('');
+        // La remise à zéro de la recherche appartient désormais à GroupSelector.
         await saveGroupSupabase(selectedGroup);
     };
 
@@ -310,12 +308,14 @@ const Page = () => {
 
                     <View style={styles.separator} />
 
-                    <SettingItem
-                        icon="people-outline"
-                        title="Groupe par défaut"
-                        description={getGroupDisplayName(group, calendars) === 'merged_view' ? 'Vue Combinée (Tous)' : getGroupDisplayName(group, calendars)}
-                        onPress={() => setActiveModal('group')}
-                        controlType="button"
+                    <GroupSelector
+                        group={group}
+                        calendars={calendars}
+                        persoGroupUrl={persoGroupUrl}
+                        visible={activeModal === 'group'}
+                        onOpen={() => setActiveModal('group')}
+                        onClose={() => setActiveModal(null)}
+                        onSelect={handleGroupSelection}
                     />
 
                     <View style={styles.separator} />
@@ -412,109 +412,6 @@ const Page = () => {
                 theme={theme}
             />
 
-
-            <CustomModal
-                visible={activeModal === 'group'}
-                onClose={() => {
-                    setActiveModal(null);
-                    setGroupSearchText('');
-                }}
-                backgroundColor={theme.bg.base}
-                primaryColor={theme.colors.primary}
-                secondaryColor={theme.colors.secondary}
-                headerTitle="⚠️ Changer le groupe par défaut ⚠️"
-                renderContent={() => {
-                    // On prépare la liste des groupes standards
-                    const groupList = Object.keys(groupInfo);
-
-                    // On prépare la liste des calendriers persos (URLs)
-                    const customCalUrls = calendars.map(c => c.url);
-
-                    // Construction de la liste finale : [Vue Combinée, ...Calendriers Customs, ...Groupes Univ]
-
-                    let fullData = ['merged_view', ...customCalUrls, ...groupList];
-
-                    // Si on a une URL perso stockée qui n'est pas dans les calendriers custom, on l'ajoute (legacy)
-                    if (persoGroupUrl && !customCalUrls.includes(persoGroupUrl)) {
-                        fullData.splice(1, 0, persoGroupUrl);
-                    }
-
-                    // Dédoublonnage
-                    fullData = [...new Set(fullData)];
-
-                    // Filtrage par recherche
-                    const filteredData = fullData.filter(item => {
-                        let displayName = '';
-                        if (item === 'merged_view') displayName = 'Vue Combinée (Tous mes calendriers)';
-                        else displayName = getGroupDisplayName(item, calendars).toLowerCase();
-
-                        const search = groupSearchText.toLowerCase();
-                        return displayName.includes(search);
-                    });
-
-                    return (
-                        <View style={{ height: screenHeight * 0.7 }}>
-                            <TextInput
-                                style={{
-                                    backgroundColor: theme.bg.alarme,
-                                    color: theme.text.base,
-                                    padding: 12,
-                                    borderRadius: 12,
-                                    marginBottom: 10,
-                                    fontSize: 16
-                                }}
-                                placeholder="Rechercher un groupe..."
-                                placeholderTextColor={theme.text.secondary}
-                                value={groupSearchText}
-                                onChangeText={setGroupSearchText}
-                                autoCapitalize="none"
-                                autoCorrect={false}
-                            />
-                            <FlatList
-                                contentContainerStyle={{
-                                    paddingBottom: screenHeight * 0.1,
-                                }}
-                                data={filteredData}
-                                keyExtractor={(item) => item}
-                                initialNumToRender={20}
-                                maxToRenderPerBatch={20}
-                                windowSize={10}
-                                renderItem={({ item, index }) => {
-                                    const isMerged = item === 'merged_view';
-                                    const display = isMerged ? 'Vue Combinée (Tous mes calendriers)' : getGroupDisplayName(item, calendars);
-
-                                    return (
-                                        <TouchableOpacity
-                                            style={[
-                                                styles.groupItem,
-                                                {
-                                                    backgroundColor: group === item
-                                                        ? theme.colors.primary
-                                                        : (isMerged ? theme.colors.secondary + '20' : `${theme.bg.tabBarActive}${index % 2 === 0 ? '20' : '10'}`),
-                                                    borderWidth: isMerged ? 1 : 0,
-                                                    borderColor: theme.colors.primary
-                                                }
-                                            ]}
-                                            onPress={() => {
-                                                handleGroupSelection(item);
-                                                setGroupSearchText('');
-                                            }}
-                                        >
-                                            <Text style={{
-                                                color: theme.text.base,
-                                                fontWeight: isMerged ? 'bold' : 'normal',
-                                                fontSize: isMerged ? 16 : 14
-                                            }}>
-                                                {display}
-                                            </Text>
-                                        </TouchableOpacity>
-                                    );
-                                }}
-                            />
-                        </View>
-                    );
-                }}
-            />
 
             <CustomModal
                 visible={activeModal === 'rappel'}
