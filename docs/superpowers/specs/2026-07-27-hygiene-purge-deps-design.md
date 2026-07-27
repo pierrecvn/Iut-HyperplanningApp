@@ -35,9 +35,13 @@ Nuance importante sur ces polyfills : `metro.config.js` ne définit aucun `extra
 
 Ces huit paquets sont donc supprimés dans un **commit isolé**, et la construction du bundle Metro sert de garde-fou. Si elle échoue sur un `Unable to resolve module`, seul ce commit est annulé, sans toucher au reste de la purge.
 
-### P3 — Plugin Babel obsolète
+### P3 — Plugin Babel sur un chemin déprécié
 
-`babel.config.js:5` déclare `react-native-reanimated/plugin`. Depuis Reanimated 4 — déjà installé en 4.1 — ce plugin a été déplacé vers `react-native-worklets/plugin`. Le projet est donc sur l'ancien chemin depuis le SDK 54.
+`babel.config.js:5` déclare `react-native-reanimated/plugin`. Depuis Reanimated 4 — installé ici en 4.1.6 — ce plugin a été déplacé vers `react-native-worklets/plugin`.
+
+Vérification faite, **ce n'est pas un bug** : `node_modules/react-native-reanimated/plugin/index.js` est un ré-export d'une ligne vers le nouveau chemin. La configuration actuelle fonctionne.
+
+Le changement est donc préventif et non correctif. Il est fait maintenant parce que le SDK 57 embarque Reanimated 4.5 et que ce shim de compatibilité est destiné à disparaître : le corriger ici évite d'avoir à diagnostiquer une erreur de configuration Babel au milieu d'une montée de version qui en produira déjà assez.
 
 ### P4 — Bruit Git
 
