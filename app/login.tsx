@@ -2,7 +2,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useTheme } from "@/context/ThemeContext";
 import React, { useState } from "react";
 import { Dimensions, StyleSheet, Text, View } from "react-native";
-import LinearGradient from 'react-native-linear-gradient';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import Icon from '@/assets/images/login.svg';
