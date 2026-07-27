@@ -47,7 +47,7 @@ Les suppressions sont séparées selon leur niveau de certitude. Le palier A ne 
 
 **Palier A — suppression directe** (aucun import, aucun rôle transitif ni de configuration) :
 
-`react-native-fs` · `node-ical` · `react-native-worklets-core` · `react-native-draggable-flatlist` · `react-native-crypto` · `base64-arraybuffer` · `date-fns` · `expo-background-fetch` · `expo-image-picker` · `expo-local-authentication` · `expo-haptics` · `buffer` · `events` · `process` · `readable-stream` · `path-browserify` · `querystring-es3` · `url` · `util`
+`react-native-fs` · `node-ical` · `react-native-worklets-core` · `react-native-draggable-flatlist` · `react-native-crypto` · `base64-arraybuffer` · `date-fns` · `expo-background-fetch` · `expo-image-picker` · `expo-local-authentication` · `expo-haptics` · `react-dom` · `react-native-web` · `buffer` · `events` · `process` · `readable-stream` · `path-browserify` · `querystring-es3` · `url` · `util`
 
 Note sur `expo-background-fetch` : dépréciée depuis le SDK 53 au profit d'`expo-background-task`, qui est déjà installée, déjà déclarée dans les plugins d'`app.json`, et seule utilisée par `NotificationService.ts`.
 
@@ -61,16 +61,19 @@ Note sur `expo-background-fetch` : dépréciée depuis le SDK 53 au profit d'`ex
 | `expo-linking` | pair d'`expo-router` |
 | `expo-status-bar` | aucun import, mais sans coût |
 | `expo-system-ui` | piloté par la configuration `app.json`, pas par un import |
-| `react-dom`, `react-native-web` | nécessaires uniquement pour la cible web |
 | `zustand` | importé pour le seul type `StateStorage` dans `functions/supabase.ts` |
 
 Chaque paquet du palier B est conservé par défaut. Il n'est supprimé que si `npm ls <paquet>` confirme qu'aucune dépendance ne le réclame comme pair.
 
 Cas particulier de `zustand` : l'export `zustandStorage` de `functions/supabase.ts:12` n'est importé nulle part, et `zustand` ne sert qu'à typer cet export mort. Décision : supprimer l'export `zustandStorage` et la dépendance. Si un usage futur apparaît, l'interface se réécrit en cinq lignes localement.
 
-### Cible web
+### Cible web — abandonnée
 
-`app.json` déclare une configuration `web`, mais aucun script npm ne cible le web hors `expo start --web`, et l'app est distribuée en APK via EAS. La question de conserver `react-dom` et `react-native-web` est posée à l'utilisateur avant suppression — elle n'est pas tranchée unilatéralement ici.
+L'utilisateur a confirmé ne pas utiliser la cible web. `react-dom` et `react-native-web` passent donc au palier A.
+
+Le bloc `web` d'`app.json` est également supprimé : conserver la configuration d'une cible qui ne peut plus se construire est trompeur pour quiconque relira le fichier. `assets/images/favicon.png`, qui n'était référencé que par ce bloc, est supprimé avec lui.
+
+Conséquence assumée : `npx expo start --web` ne fonctionnera plus. C'est le but.
 
 ### `react-native-linear-gradient`
 
@@ -93,8 +96,9 @@ L'ordre est contraint : la baseline doit être établie avant toute modification
 3. **Déclarer les fantômes** — ajouter `dayjs`, `@react-navigation/bottom-tabs` et `@react-navigation/elements` en dépendances directes, aux versions exactes actuellement résolues dans `node_modules` (relevées via `npm ls`), pour garantir qu'aucun comportement ne change.
 4. **Corriger le plugin Babel** — remplacer `react-native-reanimated/plugin` par `react-native-worklets/plugin`.
 5. **Purger le palier A** — une seule désinstallation groupée.
-6. **Arbitrer le palier B** — `npm ls` sur chaque paquet, supprimer ceux dont personne ne dépend.
-7. **Vérifier.**
+6. **Retirer la cible web** — supprimer le bloc `web` d'`app.json` et `assets/images/favicon.png`.
+7. **Arbitrer le palier B** — `npm ls` sur chaque paquet, supprimer ceux dont personne ne dépend.
+8. **Vérifier.**
 
 ## Vérification
 
