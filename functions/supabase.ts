@@ -2,25 +2,11 @@ import { UserData } from '@/interfaces/UserData';
 import { createClient } from '@supabase/supabase-js';
 import { createMMKV } from 'react-native-mmkv';
 import 'react-native-url-polyfill/auto';
-import { StateStorage } from 'zustand/middleware';
 
 const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL ?? '';
 const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? '';
 
 const storage = createMMKV();
-
-export const zustandStorage: StateStorage = {
-    getItem: (key: string) => {
-        const value = storage.getString(key);
-        return value ?? null;
-    },
-    setItem: (key: string, value: string) => {
-        storage.set(key, value);
-    },
-    removeItem: (key: string) => {
-        storage.remove(key);
-    },
-};
 
 const supabaseStorage = {
     getItem: async (key: string): Promise<string | null> => {

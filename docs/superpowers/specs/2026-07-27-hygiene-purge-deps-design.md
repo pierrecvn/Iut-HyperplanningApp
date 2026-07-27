@@ -35,9 +35,13 @@ Nuance importante sur ces polyfills : `metro.config.js` ne définit aucun `extra
 
 Ces huit paquets sont donc supprimés dans un **commit isolé**, et la construction du bundle Metro sert de garde-fou. Si elle échoue sur un `Unable to resolve module`, seul ce commit est annulé, sans toucher au reste de la purge.
 
-### P3 — Plugin Babel obsolète
+### P3 — Plugin Babel sur un chemin déprécié
 
-`babel.config.js:5` déclare `react-native-reanimated/plugin`. Depuis Reanimated 4 — déjà installé en 4.1 — ce plugin a été déplacé vers `react-native-worklets/plugin`. Le projet est donc sur l'ancien chemin depuis le SDK 54.
+`babel.config.js:5` déclare `react-native-reanimated/plugin`. Depuis Reanimated 4 — installé ici en 4.1.6 — ce plugin a été déplacé vers `react-native-worklets/plugin`.
+
+Vérification faite, **ce n'est pas un bug** : `node_modules/react-native-reanimated/plugin/index.js` est un ré-export d'une ligne vers le nouveau chemin. La configuration actuelle fonctionne.
+
+Le changement est donc préventif et non correctif. Il est fait maintenant parce que le SDK 57 embarque Reanimated 4.5 et que ce shim de compatibilité est destiné à disparaître : le corriger ici évite d'avoir à diagnostiquer une erreur de configuration Babel au milieu d'une montée de version qui en produira déjà assez.
 
 ### P4 — Bruit Git
 
@@ -56,6 +60,10 @@ Les suppressions sont séparées selon leur niveau de certitude. Le palier A ne 
 **Palier A′ — polyfills Node, commit isolé** (voir la nuance Metro en P2) :
 
 `buffer` · `events` · `process` · `readable-stream` · `path-browserify` · `querystring-es3` · `url` · `util`
+
+**Résultat constaté à l'exécution :** 7 des 8 ont été supprimés. **`buffer` est conservée** — la construction du bundle a échoué sur `Unable to resolve module buffer from node_modules/react-native-svg/src/utils/fetchData.ts`. `react-native-svg` en fait donc un usage réel, et `react-native-svg` est utilisée par `declarations.d.ts`, `app/login.tsx` et `components/EventList.tsx`.
+
+C'est la confirmation directe que la nuance décrite en P2 n'était pas théorique : le resolver Metro atteint bien ces paquets sans câblage `extraNodeModules`, et les supprimer en bloc aurait cassé le bundle. Le commit isolé a permis de corriger en une commande sans toucher au reste de la purge.
 
 Note sur `expo-background-fetch` : dépréciée depuis le SDK 53 au profit d'`expo-background-task`, qui est déjà installée, déjà déclarée dans les plugins d'`app.json`, et seule utilisée par `NotificationService.ts`.
 
@@ -82,6 +90,22 @@ L'utilisateur a confirmé ne pas utiliser la cible web. `react-dom` et `react-na
 Le bloc `web` d'`app.json` est également supprimé : conserver la configuration d'une cible qui ne peut plus se construire est trompeur pour quiconque relira le fichier. `assets/images/favicon.png`, qui n'était référencé que par ce bloc, est supprimé avec lui.
 
 Conséquence assumée : `npx expo start --web` ne fonctionnera plus. C'est le but.
+
+#### Alerte `expo-doctor` connue et acceptée
+
+Le retrait de `react-native-web` fait apparaître une alerte que la référence n'avait pas :
+
+```
+✖ Check that required peer dependencies are installed
+Missing peer dependency: react-native-web
+Required by: react-native-ui-datepicker
+```
+
+Elle est **acceptée en connaissance de cause**. `react-native-ui-datepicker@2.0.12` déclare `"react-native-web": "*"` en pair sans `peerDependenciesMeta.optional`, donc l'outillage le tient pour obligatoire. Mais son usage réel est derrière un test de plateforme — `Platform.OS === 'web' ? WheelWeb : WheelNative` dans `components/TimePicker/Wheel.js` — et la construction du bundle Android aboutit sans lui, en 1849 modules.
+
+Réinstaller le paquet pour faire taire l'alerte reviendrait à embarquer une bibliothèque dont on vient d'établir qu'elle ne sert à rien sur la seule cible distribuée.
+
+**Conséquence pour le chantier 2 :** cette alerte fait partie de la nouvelle référence. Au moment de la montée SDK, elle ne doit pas être confondue avec une régression. `react-native-ui-datepicker` v3, qui sera installée à cette occasion, modifiera probablement cette déclaration de pair — à revérifier alors.
 
 ### `react-native-linear-gradient`
 
