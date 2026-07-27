@@ -2,12 +2,19 @@ import Icon from '@/assets/images/noEvents.svg';
 import CustomModal from "@/components/CustomModal";
 import {useEdt} from '@/context/EdtContext';
 import {useTheme} from '@/context/ThemeContext';
+import {
+	EventStatus,
+	getEventDuration,
+	getEventStatus as getStatutEvenement,
+	isCancelled,
+} from '@/functions/eventFormat';
+import {useEventsAffichage} from '@/hooks/useEventsAffichage';
 import {ICalEvent} from '@/interfaces/IcalEvent';
 import {FontAwesome, Ionicons} from "@expo/vector-icons";
 import dayjs from 'dayjs';
 import 'dayjs/locale/fr';
 dayjs.locale('fr');
-import React, {useCallback, useMemo} from 'react';
+import React, {useCallback} from 'react';
 import {
 	ActivityIndicator,
 	Dimensions,
@@ -19,7 +26,6 @@ import {
 } from 'react-native';
 import {TouchableOpacity as GestureTouchableOpacity} from "react-native-gesture-handler";
 import {router} from "expo-router";
-import {useAuth} from "@/context/AuthContext";
 
 interface EventListProps {
 	nb?: string;
@@ -27,130 +33,19 @@ interface EventListProps {
 	data?: ICalEvent[];
 }
 
-type EventStatus = {
-	status: string;
-	timeText: string;
-	color: string;
-	icon: string;
-};
-
-const getTimeRemaining = (date: Date): string | null => {
-	const now = dayjs();
-	const target = dayjs(date);
-	const diff = target.diff(now, 'minute');
-
-	if (diff < 0) return null;
-
-	const hours = Math.floor(diff / 60);
-	const minutes = diff % 60;
-
-	return hours > 0
-		? `${hours}h${minutes > 0 ? ` ${minutes}min` : ''}`
-		: `${minutes}min`;
-};
-
-const getEventDuration = (start: Date, end: Date) => {
-	const duration = dayjs(end).diff(dayjs(start), 'minute');
-	const hours = Math.floor(duration / 60);
-	const minutes = duration % 60;
-
-	return {
-		hours,
-		minutes,
-		formatted: `${hours}h${minutes > 0 ? `${minutes}` : ''}`
-	};
-};
-
-const isCancelled = (event: ICalEvent): boolean => {
-	return event.summary.toLowerCase().startsWith('cours annulé');
-};
-
 export default function EventList({nb = "all", estUnique = false, data}: EventListProps) {
 	const {theme} = useTheme();
-	const {user} = useAuth();
 
 	const {
 		loading,
 		error,
-		getEventsForDate,
 		selectedDate,
-		allEvents,
 		setSelectedDate
 	} = useEdt();
 	const [selectedEvent, setSelectedEvent] = React.useState<ICalEvent | null>(null);
 	const {width: screenWidth} = Dimensions.get('window');
 
-	const events = useMemo(() => {
-		let listEvents: ICalEvent[] = [];
-
-		if (data) {
-			// Filter provided data by selectedDate
-			listEvents = data.filter(event => dayjs(event.start).isSame(selectedDate, 'day'));
-		} else {
-			const dateToUse = estUnique ? dayjs() : selectedDate;
-			listEvents = estUnique
-				? getEventsForDate(dateToUse, user?.group)
-				: getEventsForDate(dateToUse);
-		}
-		
-		// console.log("allEvents : ", allEvents);
-
-		if (nb === "all") return listEvents;
-
-		const now = dayjs();
-		const upcomingEvents = listEvents.filter(event =>
-			dayjs(event.start).isAfter(now) ||
-			(dayjs(event.start).isBefore(now) && dayjs(event.end).isAfter(now))
-		);
-
-		upcomingEvents.sort((a, b) => dayjs(a.start).valueOf() - dayjs(b.start).valueOf());
-
-		const count = parseInt(nb);
-		return isNaN(count) ? listEvents : upcomingEvents.slice(0, count);
-	}, [getEventsForDate, estUnique ? null : selectedDate, nb, user?.group, data]);
-
-	const eventsAvecPauseMidi = useMemo(() => {
-		const eventsWithBreakInfo = [];
-
-		for (let i = 0; i < events.length; i++) {
-			eventsWithBreakInfo.push(events[i]);
-
-			if (i < events.length - 1) {
-				const currentEventEnd = dayjs(events[i].end);
-				const nextEventStart = dayjs(events[i + 1].start);
-				const breakDuration = nextEventStart.diff(currentEventEnd, 'minute');
-
-				if (breakDuration > 75) {
-					eventsWithBreakInfo.push({
-						type: 'break',
-						start: currentEventEnd.toDate(),
-						end: nextEventStart.toDate(),
-						duration: breakDuration
-					});
-				}
-			}
-		}
-
-		return eventsWithBreakInfo;
-	}, [events]);
-
-	const courseDayStats = useMemo(() => {
-		if (events.length === 0) return null;
-
-		const firstEvent = dayjs(events[0].start);
-		const lastEvent = dayjs(events[events.length - 1].end);
-		const now = dayjs();
-
-		const totalCourseDuration = lastEvent.diff(firstEvent, 'minute');
-		const remainingTime = lastEvent.diff(now, 'minute');
-
-		return {
-			startTime: firstEvent,
-			endTime: lastEvent,
-			totalDuration: totalCourseDuration,
-			remainingTime: remainingTime > 0 ? remainingTime : 0
-		};
-	}, [events]);
+	const {events, eventsAvecPauseMidi, courseDayStats} = useEventsAffichage({nb, estUnique, data});
 
 	React.useEffect(() => {
 		const timer = setInterval(() => {
@@ -161,46 +56,14 @@ export default function EventList({nb = "all", estUnique = false, data}: EventLi
 		return () => clearInterval(timer);
 	}, [selectedEvent]);
 
-	const getEventStatus = useCallback((event: ICalEvent): EventStatus => {
-		if (isCancelled(event)) {
-			return {
-				status: 'close-circle',
-				timeText: 'Cours annulé',
-				color: `${theme.colors.danger}`,
-				icon: 'close-circle'
-			};
-		}
-
-		const now = dayjs();
-		const start = dayjs(event.start);
-		const end = dayjs(event.end);
-		const eventColor = event.color || theme.colors.primary || '#000000';
-
-		if (now.isBefore(start)) {
-			return {
-				status: 'upcoming',
-				timeText: `Commence dans ${getTimeRemaining(event.start)}`,
-				color: eventColor,
-				icon: 'chevron-down'
-			};
-		}
-
-		if (now.isAfter(end)) {
-			return {
-				status: 'finished',
-				timeText: 'Terminé',
-				color: '#757575',
-				icon: 'file-tray-outline'
-			};
-		}
-
-		return {
-			status: 'ongoing',
-			timeText: `Se termine dans ${getTimeRemaining(event.end)}`,
-			color: '#4CAF50', // Ongoing stays green usually, or we could use eventColor? Let's keep green for active status distinction.
-			icon: 'alarm-outline'
-		};
-	}, [theme.colors.primary, theme.colors.danger]);
+	const getEventStatus = useCallback(
+		(event: ICalEvent): EventStatus =>
+			getStatutEvenement(event, {
+				primary: theme.colors.primary,
+				danger: theme.colors.danger,
+			}),
+		[theme.colors.primary, theme.colors.danger]
+	);
 
 	const renderBreak = (pauseMidi: any) => {
 		const breakDurationHours = Math.floor(pauseMidi.duration / 60);
