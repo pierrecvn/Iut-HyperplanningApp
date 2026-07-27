@@ -91,6 +91,22 @@ Le bloc `web` d'`app.json` est également supprimé : conserver la configuration
 
 Conséquence assumée : `npx expo start --web` ne fonctionnera plus. C'est le but.
 
+#### Alerte `expo-doctor` connue et acceptée
+
+Le retrait de `react-native-web` fait apparaître une alerte que la référence n'avait pas :
+
+```
+✖ Check that required peer dependencies are installed
+Missing peer dependency: react-native-web
+Required by: react-native-ui-datepicker
+```
+
+Elle est **acceptée en connaissance de cause**. `react-native-ui-datepicker@2.0.12` déclare `"react-native-web": "*"` en pair sans `peerDependenciesMeta.optional`, donc l'outillage le tient pour obligatoire. Mais son usage réel est derrière un test de plateforme — `Platform.OS === 'web' ? WheelWeb : WheelNative` dans `components/TimePicker/Wheel.js` — et la construction du bundle Android aboutit sans lui, en 1849 modules.
+
+Réinstaller le paquet pour faire taire l'alerte reviendrait à embarquer une bibliothèque dont on vient d'établir qu'elle ne sert à rien sur la seule cible distribuée.
+
+**Conséquence pour le chantier 2 :** cette alerte fait partie de la nouvelle référence. Au moment de la montée SDK, elle ne doit pas être confondue avec une régression. `react-native-ui-datepicker` v3, qui sera installée à cette occasion, modifiera probablement cette déclaration de pair — à revérifier alors.
+
 ### `react-native-linear-gradient`
 
 Utilisée dans `app/login.tsx:5` uniquement. Il s'agit d'une bibliothèque RN nue, là où `expo-linear-gradient` est alignée sur le cycle de version du SDK et testée à chaque release Expo. La migration est un changement d'import et un passage de l'export par défaut à un export nommé.
