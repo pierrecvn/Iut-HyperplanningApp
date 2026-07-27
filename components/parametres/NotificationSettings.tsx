@@ -12,19 +12,14 @@ import { FlatList } from 'react-native-gesture-handler';
 
 const RAPPEL_CHOICES = [5, 10, 15, 20, 30, 45, 50, 60];
 
+const RAPPEL_DEFAUT = 15;
+
 type NotificationSettingsProps = {
-    /** Valeur affichée, tenue par l'écran parce qu'elle est initialisée avec le groupe. */
-    rappel: number;
     /**
-     * Valeur réellement utilisée pour planifier, lue sur l'instantané de `user`
-     * pris au montage.
-     *
-     * ATTENTION — elle diverge de `rappel` dès que l'utilisateur change la
-     * fréquence : `setRappel` ne met pas `data` à jour. Une désactivation puis
-     * réactivation des notifications replanifie donc avec l'ancienne valeur.
-     * Comportement d'origine conservé tel quel ; corrigé séparément.
+     * Fréquence de rappel en minutes, `null` si l'utilisateur ne l'a jamais
+     * configurée. Source unique : sert à l'affichage comme à la planification.
      */
-    scheduleRappel: number | null | undefined;
+    rappel: number | null;
     events: ICalEvent[];
     modalVisible: boolean;
     onOpenModal: () => void;
@@ -39,7 +34,6 @@ type NotificationSettingsProps = {
  */
 export function NotificationSettings({
     rappel,
-    scheduleRappel,
     events,
     modalVisible,
     onOpenModal,
@@ -64,8 +58,8 @@ export function NotificationSettings({
                 if (isNotificationEnabled) {
                     // Si activé, on replanifie (ça clean d'abord dans la fonction)
                     const permission = await NotificationService.initNotifications();
-                    if (permission && scheduleRappel && events.length > 0) {
-                        await NotificationService.planifierNotificationsEvents(events, scheduleRappel);
+                    if (permission && rappel && events.length > 0) {
+                        await NotificationService.planifierNotificationsEvents(events, rappel);
                     }
                 } else {
                     // Si désactivé, on s'assure que tout est clean (au cas où)
@@ -82,15 +76,15 @@ export function NotificationSettings({
         };
 
         initializeNotifications();
-    }, [scheduleRappel, events]);
+    }, [rappel, events]);
 
     const handleNotificationToggle = async () => {
         const newStatus = !notificationStatus;
 
         if (newStatus) {
             const permission = await NotificationService.initNotifications();
-            if (permission && scheduleRappel) {
-                await NotificationService.planifierNotificationsEvents(events, scheduleRappel);
+            if (permission && rappel) {
+                await NotificationService.planifierNotificationsEvents(events, rappel);
                 const scheduled = await NotificationService.getNotificationsPlanifiees();
                 setScheduledNotifications(scheduled as never);
             }
@@ -120,7 +114,7 @@ export function NotificationSettings({
                 title="Activer les notifications"
                 description={notificationStatus
                     ? `Vous avez ${scheduledNotifications.length} notifications planifiées`
-                    : `Activer les notifications pour recevoir des rappels ${rappel} minutes avant vos cours`}
+                    : `Activer les notifications pour recevoir des rappels ${rappel ?? RAPPEL_DEFAUT} minutes avant vos cours`}
                 value={notificationStatus}
                 onValueChange={handleNotificationToggle}
                 controlType="switch"
@@ -131,7 +125,7 @@ export function NotificationSettings({
             <SettingItem
                 icon="time-outline"
                 title="Rappels"
-                description={`Fréquence de rappel: ${rappel} minutes`}
+                description={`Fréquence de rappel: ${rappel ?? RAPPEL_DEFAUT} minutes`}
                 onPress={onOpenModal}
                 controlType="button"
                 disabled={!notificationStatus}

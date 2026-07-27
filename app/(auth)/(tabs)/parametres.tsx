@@ -37,7 +37,9 @@ const Page = () => {
     const { width: screenWidth } = Dimensions.get('window');
 
     const [group, setGroup] = useState<string>('');
-    const [rappel, setRappel] = useState<number>(15);
+    // null = jamais configuré. Source unique : sert à l'affichage ET à la
+    // planification, pour que les deux ne puissent plus diverger.
+    const [rappel, setRappel] = useState<number | null>(null);
     const [data, setData] = useState<UserData | null>();
     const [activeModal, setActiveModal] = useState<ModalType>(null);
     const [isInitialGroupSelection, setIsInitialGroupSelection] = useState(false);
@@ -90,18 +92,18 @@ const Page = () => {
                     setPersoGroupUrl(storedPersoUrl);
                 }
 
-                // group
+                if (data?.group != null) setGroup(data.group);
+                if (data?.rappel != null) setRappel(data.rappel);
+
+                // Une seule modale à la fois : le groupe d'abord, le rappel
+                // ensuite. Auparavant les deux affectations se suivaient et la
+                // seconde écrasait la première, si bien qu'un nouvel
+                // utilisateur ne voyait jamais la sélection de groupe.
                 if (data?.group == null) {
-                    setActiveModal('group');
                     setIsInitialGroupSelection(true);
-                } else {
-                    setGroup(data.group);
-                }
-                // rappel
-                if (data?.rappel == null) {
+                    setActiveModal('group');
+                } else if (data?.rappel == null) {
                     setActiveModal('rappel');
-                } else {
-                    setRappel(data.rappel);
                 }
 
             } catch (error) {
@@ -128,9 +130,17 @@ const Page = () => {
         }
 
         setGroup(selectedGroup);
-        setActiveModal(null);
         setIsInitialGroupSelection(false);
         // La remise à zéro de la recherche appartient désormais à GroupSelector.
+
+        // Premier lancement : enchaîner sur le choix du rappel, qui n'avait
+        // jamais pu s'afficher tant que le groupe occupait activeModal.
+        if (isInitialGroupSelection && rappel == null) {
+            setActiveModal('rappel');
+        } else {
+            setActiveModal(null);
+        }
+
         await saveGroupSupabase(selectedGroup);
     };
 
@@ -196,7 +206,6 @@ const Page = () => {
                 }]}>
                     <NotificationSettings
                         rappel={rappel}
-                        scheduleRappel={data?.rappel}
                         events={defaultGroupEvents}
                         modalVisible={activeModal === 'rappel'}
                         onOpenModal={() => setActiveModal('rappel')}
