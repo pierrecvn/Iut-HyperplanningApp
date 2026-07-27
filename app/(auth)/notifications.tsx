@@ -1,9 +1,9 @@
 import {useTheme} from '@/context/ThemeContext';
-import {useHeaderHeight} from '@react-navigation/elements';
+import {useHeaderHeight} from "expo-router/react-navigation";
 import React, {useEffect, useRef, useState} from 'react';
 import {Animated, Dimensions, StyleSheet, Text, TouchableOpacity, View} from 'react-native';
 import {SafeAreaView, useSafeAreaInsets} from 'react-native-safe-area-context';
-import {useBottomTabBarHeight} from "@react-navigation/bottom-tabs";
+import {useBottomTabBarHeight} from "expo-router/js-tabs";
 
 
 const Notification = () => {

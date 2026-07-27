@@ -7,11 +7,6 @@
     "icon": "./assets/images/icon.png",
     "scheme": "iuthyperplanningapp",
     "userInterfaceStyle": "automatic",
-    "splash": {
-      "image": "./assets/images/splash.png",
-      "resizeMode": "cover",
-      "backgroundColor": "#FFECD1"
-    },
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "fr.sajima.IutHyperplanningApp"
@@ -36,7 +31,15 @@
       "expo-font",
       "expo-background-task",
       "@react-native-community/datetimepicker",
-      "expo-web-browser"
+      "expo-web-browser",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/images/splash.png",
+          "resizeMode": "cover",
+          "backgroundColor": "#FFECD1"
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true
