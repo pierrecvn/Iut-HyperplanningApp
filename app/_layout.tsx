@@ -7,7 +7,6 @@ import { NotificationService } from "@/functions/NotificationService";
 import { getNotificationStatus } from "@/functions/supabase";
 import { FontAwesome, Ionicons } from '@expo/vector-icons';
 import { useFonts } from 'expo-font';
-import * as NavigationBar from 'expo-navigation-bar';
 import { SplashScreen, Stack, useRouter, useSegments } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { TouchableOpacity } from 'react-native';
@@ -90,11 +89,6 @@ const RootLayoutContent = () => {
 
 
     useEffect(() => {
-        const setNavBarColor = async () => {
-            await NavigationBar.setPositionAsync('absolute');
-            await NavigationBar.setBackgroundColorAsync('transparent');
-        };
-        setNavBarColor();
         if (error) throw error;
     }, [error]);
 

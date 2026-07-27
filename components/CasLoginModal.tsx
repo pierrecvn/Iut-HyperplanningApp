@@ -169,7 +169,7 @@ const styles = StyleSheet.create({
         position: 'relative',
     },
     loading: {
-        ...StyleSheet.absoluteFillObject,
+        ...StyleSheet.absoluteFill,
         justifyContent: 'center',
         alignItems: 'center',
         zIndex: 100,

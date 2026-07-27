@@ -38,7 +38,7 @@ supabase functions deploy
 
 // update :
 
-eas update --branch main --message "update de test sur l'app"
+eas update --branch main --environment production --message "update de test sur l'app"
 
 eas build -p android --profile preview
 
