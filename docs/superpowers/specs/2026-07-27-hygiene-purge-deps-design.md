@@ -61,6 +61,10 @@ Les suppressions sont séparées selon leur niveau de certitude. Le palier A ne 
 
 `buffer` · `events` · `process` · `readable-stream` · `path-browserify` · `querystring-es3` · `url` · `util`
 
+**Résultat constaté à l'exécution :** 7 des 8 ont été supprimés. **`buffer` est conservée** — la construction du bundle a échoué sur `Unable to resolve module buffer from node_modules/react-native-svg/src/utils/fetchData.ts`. `react-native-svg` en fait donc un usage réel, et `react-native-svg` est utilisée par `declarations.d.ts`, `app/login.tsx` et `components/EventList.tsx`.
+
+C'est la confirmation directe que la nuance décrite en P2 n'était pas théorique : le resolver Metro atteint bien ces paquets sans câblage `extraNodeModules`, et les supprimer en bloc aurait cassé le bundle. Le commit isolé a permis de corriger en une commande sans toucher au reste de la purge.
+
 Note sur `expo-background-fetch` : dépréciée depuis le SDK 53 au profit d'`expo-background-task`, qui est déjà installée, déjà déclarée dans les plugins d'`app.json`, et seule utilisée par `NotificationService.ts`.
 
 **Palier B — vérifier avant de trancher** (aucun import direct, mais rôle possible comme pair transitif ou via la configuration Expo) :
