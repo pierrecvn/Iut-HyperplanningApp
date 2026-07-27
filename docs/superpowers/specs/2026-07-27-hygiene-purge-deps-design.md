@@ -29,7 +29,11 @@ Le risque est concret : `react-native-ui-datepicker` v3 — la majeure que l'upg
 Environ vingt paquets n'ont aucun import dans le code. Deux comptent pour la suite :
 
 - **`react-native-fs`** n'est plus maintenue et ne supporte pas la New Architecture. React Native 0.86, qu'installe le SDK 57, est New Arch uniquement. Cette dépendance bloquerait donc l'upgrade — alors qu'elle n'est pas utilisée.
-- **`node-ical`** est la seule raison d'être des huit polyfills Node présents (`buffer`, `events`, `process`, `readable-stream`, `path-browserify`, `querystring-es3`, `url`, `util`). Seul `ical.js` est réellement importé. Ces polyfills ne sont d'ailleurs même pas câblés : `metro.config.js` ne définit aucun `extraNodeModules`, donc ils sont inertes.
+- **`node-ical`** est vraisemblablement la raison d'être des huit polyfills Node présents (`buffer`, `events`, `process`, `readable-stream`, `path-browserify`, `querystring-es3`, `url`, `util`). Seul `ical.js` est réellement importé.
+
+Nuance importante sur ces polyfills : `metro.config.js` ne définit aucun `extraNodeModules`, mais cela ne les rend **pas** inertes pour autant. Le resolver par défaut de Metro résout un `require('buffer')` nu vers `node_modules/buffer` dès lors que le paquet est installé, sans câblage explicite. Si une dépendance transitive — `ical.js`, `@supabase/supabase-js` — effectue un tel `require`, le polyfill est porteur et sa suppression casse le bundle.
+
+Ces huit paquets sont donc supprimés dans un **commit isolé**, et la construction du bundle Metro sert de garde-fou. Si elle échoue sur un `Unable to resolve module`, seul ce commit est annulé, sans toucher au reste de la purge.
 
 ### P3 — Plugin Babel obsolète
 
@@ -47,7 +51,11 @@ Les suppressions sont séparées selon leur niveau de certitude. Le palier A ne 
 
 **Palier A — suppression directe** (aucun import, aucun rôle transitif ni de configuration) :
 
-`react-native-fs` · `node-ical` · `react-native-worklets-core` · `react-native-draggable-flatlist` · `react-native-crypto` · `base64-arraybuffer` · `date-fns` · `expo-background-fetch` · `expo-image-picker` · `expo-local-authentication` · `expo-haptics` · `react-dom` · `react-native-web` · `buffer` · `events` · `process` · `readable-stream` · `path-browserify` · `querystring-es3` · `url` · `util`
+`react-native-fs` · `node-ical` · `react-native-worklets-core` · `react-native-draggable-flatlist` · `react-native-crypto` · `base64-arraybuffer` · `date-fns` · `expo-background-fetch` · `expo-image-picker` · `expo-local-authentication` · `expo-haptics` · `react-dom` · `react-native-web`
+
+**Palier A′ — polyfills Node, commit isolé** (voir la nuance Metro en P2) :
+
+`buffer` · `events` · `process` · `readable-stream` · `path-browserify` · `querystring-es3` · `url` · `util`
 
 Note sur `expo-background-fetch` : dépréciée depuis le SDK 53 au profit d'`expo-background-task`, qui est déjà installée, déjà déclarée dans les plugins d'`app.json`, et seule utilisée par `NotificationService.ts`.
 
@@ -96,9 +104,10 @@ L'ordre est contraint : la baseline doit être établie avant toute modification
 3. **Déclarer les fantômes** — ajouter `dayjs`, `@react-navigation/bottom-tabs` et `@react-navigation/elements` en dépendances directes, aux versions exactes actuellement résolues dans `node_modules` (relevées via `npm ls`), pour garantir qu'aucun comportement ne change.
 4. **Corriger le plugin Babel** — remplacer `react-native-reanimated/plugin` par `react-native-worklets/plugin`.
 5. **Purger le palier A** — une seule désinstallation groupée.
-6. **Retirer la cible web** — supprimer le bloc `web` d'`app.json` et `assets/images/favicon.png`.
-7. **Arbitrer le palier B** — `npm ls` sur chaque paquet, supprimer ceux dont personne ne dépend.
-8. **Vérifier.**
+6. **Purger le palier A′** — les polyfills Node, dans un commit à part, suivi immédiatement d'une construction du bundle Metro.
+7. **Retirer la cible web** — supprimer le bloc `web` d'`app.json` et `assets/images/favicon.png`.
+8. **Arbitrer le palier B** — `npm ls` sur chaque paquet, supprimer ceux dont personne ne dépend.
+9. **Vérifier.**
 
 ## Vérification
 
@@ -122,7 +131,7 @@ En cas de doute sur une régression, `git stash` puis relecture de la baseline p
 |---|---|---|
 | Un paquet du palier A est utilisé par du code natif ou une configuration hors de la portée du grep | faible | `expo-doctor` et le build Metro le révèlent ; `git revert` du commit de purge |
 | Une version de fantôme épinglée diverge de la résolution actuelle | faible | les versions sont relevées depuis `node_modules`, pas choisies |
-| Le retrait des polyfills casse `@supabase/supabase-js` | faible | `react-native-url-polyfill/auto` est conservée ; Supabase n'utilise pas les autres |
+| Un `require` nu de polyfill dans une dépendance transitive casse le bundle | **moyenne** | palier A′ isolé dans son propre commit + construction Metro immédiate ; `react-native-url-polyfill/auto` est conservée dans tous les cas |
 
 Chaque étape fait l'objet d'un commit séparé, ce qui rend le retour arrière granulaire.
 
