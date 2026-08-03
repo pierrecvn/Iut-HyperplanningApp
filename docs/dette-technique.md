@@ -38,10 +38,20 @@ Sous edge-to-edge obligatoire, la version de `safe-area-context` gère mieux les
 
 Cette modale est liée à `selectedEvent` et au compteur de rafraîchissement à la seconde. L'extraire demande de décider qui possède quoi entre la liste et la modale — ce n'est pas du déplacement mécanique.
 
-## Absence de tests
+## `ThemeContext` persiste un thème que personne n'a choisi
 
-`jest` et `jest-expo` sont configurés, aucun test n'existe.
+`context/ThemeContext.tsx` enregistre le thème résolu à chaque changement, y compris celui du tout premier rendu — avant que l'effet qui relit le thème sauvegardé ait pu s'appliquer. Ce premier rendu vaut toujours le thème système.
 
-`functions/eventFormat.ts` (4 fonctions pures) et `functions/groupDisplay.ts` ont été extraits pendant le chantier 3 précisément pour être testables sans rendu. C'est le point d'entrée naturel si on veut commencer une suite de tests.
+En marche normale c'est invisible : le rendu suivant écrit la bonne valeur par-dessus. Mais si l'application est interrompue entre les deux, une erreur de rendu suffit pour que la valeur système reste persistée et devienne le thème forcé aux démarrages suivants. Constaté le 2026-08-03 pendant la mise au point du clic du widget : le thème est passé de sombre à clair après un plantage de rendu, et y est resté.
+
+Deuxième anomalie au même endroit : `getTheme()` renvoie `'dark'` par défaut quand rien n'est stocké, donc la valeur lue est toujours vraie, donc `setIsSystemTheme(false)` s'exécute à chaque démarrage. L'application ne suit jamais le thème de l'appareil au lancement, malgré l'interrupteur « Theme système » des paramètres.
+
+Corriger demande de trancher qui fait autorité au démarrage entre le thème enregistré et le thème système — ce que le contexte ne décide pas aujourd'hui. Depuis que le widget suit le thème de l'application, l'anomalie se voit aussi sur l'écran d'accueil.
+
+## Couverture de tests partielle
+
+`jest` et `jest-expo` sont configurés, 25 tests existent : `functions/edtDiff`, `functions/lienProfond`, `widgets/contenuCours`. Tous portent sur des fonctions pures.
+
+Rien n'est testé de ce qui touche MMKV — `widgetStore`, `widgetTheme`, `calendarService` — faute de double pour `react-native-mmkv`. `functions/eventFormat.ts` et `functions/groupDisplay.ts` avaient été extraits pour être testables sans rendu et ne le sont toujours pas.
 
 Voir aussi `docs/npm-audit.md` pour les 32 alertes npm, toutes cantonnées à l'outillage.

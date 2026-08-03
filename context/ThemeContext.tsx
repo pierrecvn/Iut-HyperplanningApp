@@ -3,6 +3,8 @@ import {useColorScheme} from 'react-native';
 import {autreThemes, darkTheme, lightTheme} from '../constants/themes';
 import {Theme, ThemeContextType, ThemeMode} from '../interfaces/ThemesTypes';
 import {getTheme, saveTheme} from "@/functions/supabase";
+import {enregistrerThemeWidget} from "@/functions/widgetTheme";
+import {demanderMiseAJourWidget} from "@/functions/widgetRefresh";
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
@@ -50,6 +52,13 @@ export const ThemeProvider = ({children}: ThemeProviderProps) => {
 		saveTheme(theme.name).catch(error =>
 			console.error(`Erreur lors de la sauvegarde du thème : ${error}`)
 		);
+
+		// Le widget d'écran d'accueil ne peut lire ni ce contexte ni le thème
+		// système : il relit cette valeur au stockage à chaque rendu. La
+		// demande de mise à jour évite d'attendre le prochain rafraîchissement
+		// périodique — jusqu'à 30 minutes — pour qu'il change de palette.
+		enregistrerThemeWidget(theme.name === 'dark');
+		demanderMiseAJourWidget();
 	}, [theme]);
 
 	const toggleTheme = (): void => {

@@ -9,6 +9,7 @@ import groupInfo from '@/functions/utils/edtInfo.json';
 import { getPersonalIcalUrl } from '@/functions/supabase';
 import { CalendarService, CustomCalendar } from '@/functions/calendarService';
 import { Ionicons } from "@expo/vector-icons";
+import { useLocalSearchParams, useNavigation } from 'expo-router';
 import { useBottomTabBarHeight } from "expo-router/js-tabs";
 import { useHeaderHeight } from "expo-router/react-navigation";
 import dayjs from 'dayjs';
@@ -44,9 +45,36 @@ const Page = () => {
     const [customCalendars, setCustomCalendars] = useState<CustomCalendar[]>([]);
     const [groupSearchText, setGroupSearchText] = useState('');
 
+    // Le type par défaut de useNavigation déduit les paramètres de la route
+    // depuis les routes typées, qui n'en déclarent aucun ici. On ne demande
+    // que ce dont on se sert.
+    const navigation = useNavigation<{ setParams: (params: { date?: string }) => void }>();
+    const { date: dateDemandee } = useLocalSearchParams<{ date?: string }>();
+
     useEffect(() => {
         setCustomCalendars(CalendarService.getCalendars());
     }, []);
+
+    // Ouverture depuis le widget d'écran d'accueil : le lien profond porte le
+    // jour du cours affiché, pour arriver dessus plutôt que sur aujourd'hui.
+    useEffect(() => {
+        if (!dateDemandee) return;
+
+        const jour = dayjs(dateDemandee);
+        if (jour.isValid()) setSelectedDate(jour.locale('fr'));
+
+        // Le paramètre est effacé une fois consommé. Sans ça, un second clic
+        // sur le widget vers le même jour ne rejouerait pas cet effet — la
+        // valeur n'aurait pas changé — alors que l'utilisateur a très bien pu
+        // naviguer ailleurs entre-temps.
+        //
+        // Via l'objet de navigation de cet écran et non via `router` : à
+        // l'ouverture à froid, cet effet s'exécute avant que la disposition
+        // racine soit montée, et le routeur global lève alors « Attempted to
+        // navigate before mounting the Root Layout ». Le navigateur qui porte
+        // cet écran, lui, existe déjà puisqu'il vient de le rendre.
+        navigation.setParams({ date: '' });
+    }, [dateDemandee]);
 
     const getGroupDisplayName = (grp: string) => {
         if (!grp) return "Groupe";
@@ -62,12 +90,22 @@ const Page = () => {
     useEffect(() => {
         const initializeGroup = async () => {
             try {
+                // Tant que la session n'est pas rétablie, cet écran n'a rien à
+                // décider. Sans ce garde, une ouverture directe du planning —
+                // ce que fait le widget — montait l'écran avant la résolution
+                // de l'utilisateur et ouvrait la modale de choix obligatoire à
+                // tort. Rien ne la refermait ensuite : l'utilisateur devait
+                // redésigner un groupe par défaut qu'il avait déjà. S'il n'y a
+                // vraiment aucun utilisateur, la disposition racine redirige
+                // vers la connexion.
+                if (!user) return;
+
                 const storedPersoUrl = getPersonalIcalUrl();
                 if (storedPersoUrl) {
                     setPersoGroupUrl(storedPersoUrl);
                 }
 
-                if (user?.group == null) {
+                if (user.group == null) {
                     setActiveModal('group');
                     setIsInitialGroupSelection(true);
                 } else {
