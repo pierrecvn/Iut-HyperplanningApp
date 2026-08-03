@@ -2,6 +2,8 @@ import ICAL from 'ical.js';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import classInfoData from './utils/edtInfo.json';
 import salleInfoData from './utils/salleInfo.json';
+import { comparerEdt } from '@/functions/edtDiff';
+import { signalerChangements } from '@/functions/edtChangeWatcher';
 
 interface EdtInfoData {
 	[key: string]: string;
@@ -49,16 +51,47 @@ async function fetchIcalEvents(edtInfo: string, isClass: boolean): Promise<IcalE
 	try {
 		const response = await fetch(url);
 		if (!response.ok) throw new Error("Network response was not ok");
-		
+
 		const icsData = await response.text();
-		
+
+		// Un HTTP 200 ne garantit pas un iCal : une page de maintenance
+		// écraserait le cache, le parsing rendrait zéro événement, et la
+		// comparaison conclurait que tous les cours ont été supprimés.
+		// On bascule alors sur le cache via le catch ci-dessous.
+		if (!icsData.includes('BEGIN:VCALENDAR')) {
+			throw new Error("Réponse sans contenu iCal");
+		}
+
+		const nouveauxEvents = parseIcalData(icsData, edtInfo);
+
+		// Comparaison AVANT écrasement du cache : c'est le seul moment où
+		// l'ancienne et la nouvelle version coexistent.
+		const ancienIcs = await AsyncStorage.getItem(cacheKey);
+		if (ancienIcs) {
+			const anciensEvents = parseIcalData(ancienIcs, edtInfo);
+
+			// Un fichier tronqué passe le test BEGIN:VCALENDAR mais casse le
+			// parsing, qui renvoie alors un tableau vide. Sans cette garde, on
+			// annoncerait l'annulation de tout l'emploi du temps.
+			const reponseSuspecte = nouveauxEvents.length === 0 && anciensEvents.length > 0;
+
+			if (reponseSuspecte) {
+				console.warn(`Réponse vide alors que le cache contient ${anciensEvents.length} cours pour ${edtInfo} : cache conservé`);
+				return anciensEvents;
+			}
+
+			signalerChangements(comparerEdt(anciensEvents, nouveauxEvents), edtInfo);
+		}
+
 		// Sauvegarde dans le cache
 		await AsyncStorage.setItem(cacheKey, icsData);
 
-		return parseIcalData(icsData, edtInfo);
+		return nouveauxEvents;
 
 	} catch (error) {
-		console.log(`Erreur fetch, tentative de chargement depuis le cache pour : ${edtInfo}`);
+		// Pas de comparaison sur ce chemin : on relit le cache, donc l'ancien
+		// et le nouveau seraient le même contenu et le diff toujours vide.
+		console.log(`Erreur fetch (${(error as Error)?.message ?? error}), tentative de chargement depuis le cache pour : ${edtInfo}`);
 		try {
 			const cachedData = await AsyncStorage.getItem(cacheKey);
 			if (cachedData) {

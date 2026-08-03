@@ -3,6 +3,7 @@ import { EdtProvider, useEdt } from '@/context/EdtContext';
 import { ThemeProvider } from '@/context/ThemeContext';
 import { UpdateProvider } from '@/context/UpdateContext';
 import { UserInactivityProvider } from '@/context/UserInactivity';
+import { surChangementEdt } from "@/functions/edtChangeWatcher";
 import { NotificationService } from "@/functions/NotificationService";
 import { getNotificationStatus } from "@/functions/supabase";
 import { FontAwesome, Ionicons } from '@expo/vector-icons';
@@ -90,6 +91,17 @@ const RootLayoutContent = () => {
 
     const notificationsInitialized = useRef(false);
 
+    // Abonnement aux changements d'emploi du temps détectés au moment de la
+    // récupération. La notification part immédiatement plutôt que d'être
+    // planifiée : la file des rappels est vidée à chaque replanification.
+    useEffect(() => {
+        surChangementEdt((changements) => {
+            if (!getNotificationStatus()) return;
+            NotificationService.notifierChangements(changements);
+        });
+
+        return () => surChangementEdt(null);
+    }, []);
 
     useEffect(() => {
         if (error) throw error;
