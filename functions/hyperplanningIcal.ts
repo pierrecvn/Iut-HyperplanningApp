@@ -9,6 +9,10 @@ interface EdtInfoData {
 
 interface IcalEvent {
 	type: string;
+	/** UID iCal de l'événement. Identifiant stable côté serveur, absent si le flux l'omet. */
+	uid: string | null;
+	/** Numéro de révision iCal. Incrémenté par le serveur à chaque modification. */
+	sequence: number | null;
 	summary: string;
 	description: string;
 	start: Date;
@@ -81,6 +85,14 @@ function parseIcalData(icsData: string, edtInfo: string): IcalEvent[] {
 			const event = new ICAL.Event(vevent);
 			return {
 				type: 'VEVENT',
+				// Conservés pour pouvoir comparer deux versions de l'emploi du
+				// temps : sans identifiant stable, un cours déplacé se lit comme
+				// une suppression suivie d'une création, et on ne peut ni
+				// notifier « changement d'horaire » ni mettre à jour un
+				// événement déjà exporté vers l'agenda.
+				// ical.js renvoie null quand la propriété est absente du flux.
+				uid: event.uid ?? null,
+				sequence: event.sequence ?? null,
 				summary: event.summary,
 				description: event.description,
 				start: event.startDate.toJSDate(),
