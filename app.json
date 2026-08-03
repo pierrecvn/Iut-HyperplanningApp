@@ -33,6 +33,12 @@
       "@react-native-community/datetimepicker",
       "expo-web-browser",
       [
+        "expo-calendar",
+        {
+          "calendarPermission": "L'application écrit votre emploi du temps dans un calendrier dédié de votre appareil."
+        }
+      ],
+      [
         "expo-splash-screen",
         {
           "image": "./assets/images/splash.png",

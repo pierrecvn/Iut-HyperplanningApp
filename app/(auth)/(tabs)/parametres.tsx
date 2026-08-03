@@ -1,5 +1,6 @@
 import CasLoginModal from '@/components/CasLoginModal';
 import { AboutSetting } from '@/components/parametres/AboutSetting';
+import { AgendaExport } from '@/components/parametres/AgendaExport';
 import { AccountSection } from '@/components/parametres/AccountSection';
 import { AppearanceSettings } from '@/components/parametres/AppearanceSettings';
 import { CalendarManager } from '@/components/parametres/CalendarManager';
@@ -238,6 +239,10 @@ const Page = () => {
                         onRemove={removeCalendar}
                         onToggle={toggleCalendar}
                     />
+
+                    <View style={styles.separator} />
+
+                    <AgendaExport events={defaultGroupEvents} />
 
                     <View style={styles.separator} />
 
