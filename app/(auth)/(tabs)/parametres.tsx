@@ -3,6 +3,7 @@ import { AboutSetting } from '@/components/parametres/AboutSetting';
 import { AccountSection } from '@/components/parametres/AccountSection';
 import { AppearanceSettings } from '@/components/parametres/AppearanceSettings';
 import { CalendarManager } from '@/components/parametres/CalendarManager';
+import { DevTools } from '@/components/parametres/DevTools';
 import { GroupSelector } from '@/components/parametres/GroupSelector';
 import { NotificationSettings } from '@/components/parametres/NotificationSettings';
 import SettingItem from "@/components/SettingItem";
@@ -261,6 +262,8 @@ const Page = () => {
                         onOpenModal={() => setActiveModal('info')}
                         onCloseModal={() => setActiveModal(null)}
                     />
+
+                    <DevTools groupe={group} />
                 </View>
 
 

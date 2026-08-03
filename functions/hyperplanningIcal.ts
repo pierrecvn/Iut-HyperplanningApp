@@ -29,10 +29,15 @@ const param = "643d5b312e2e36325d2666683d3126663d31";
 const edtInfoDataClass: EdtInfoData = classInfoData;
 const edtInfoDataSalle: EdtInfoData = salleInfoData;
 
+/** Clé du cache AsyncStorage pour un emploi du temps donné. */
+export function cleCache(edtInfo: string, isClass: boolean): string {
+	return `ical_${isClass ? 'class' : 'salle'}_${edtInfo}`;
+}
+
 async function fetchIcalEvents(edtInfo: string, isClass: boolean): Promise<IcalEvent[]> {
 	const edtInfoData = isClass ? edtInfoDataClass : edtInfoDataSalle;
 	const idICal = edtInfoData[edtInfo];
-	const cacheKey = `ical_${isClass ? 'class' : 'salle'}_${edtInfo}`;
+	const cacheKey = cleCache(edtInfo, isClass);
 
 	if (!idICal && !edtInfo.startsWith('http')) {
 		console.error(`Pas d'ID : ${edtInfo}`);

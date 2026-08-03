@@ -2,6 +2,7 @@ import { ChangementEdt } from "@/functions/edtDiff";
 import { ICalEvent } from "@/interfaces/IcalEvent";
 import dayjs from "dayjs";
 import 'dayjs/locale/fr';
+import { Platform } from 'react-native';
 import * as BackgroundTask from 'expo-background-task';
 import * as Notifications from 'expo-notifications';
 import * as TaskManager from 'expo-task-manager';
@@ -101,7 +102,28 @@ export class NotificationService {
         }
     }
 
+    /**
+     * Crée le canal Android référencé par les rappels.
+     *
+     * planifierNotificationsEvents passe `channelId: 'default'` depuis
+     * toujours, sans qu'aucun canal de ce nom n'ait jamais été créé. Sur
+     * Android 8 et suivants, un canal inexistant peut faire disparaître la
+     * notification sans erreur. Sans effet sur les autres plateformes.
+     */
+    static async initCanalAndroid() {
+        if (Platform.OS !== 'android') return;
+
+        await Notifications.setNotificationChannelAsync('default', {
+            name: 'Cours et changements',
+            importance: Notifications.AndroidImportance.MAX,
+            vibrationPattern: [0, 250, 250, 250],
+            sound: 'default',
+        });
+    }
+
     static async initNotifications() {
+        await this.initCanalAndroid();
+
         const { status: existingStatus } = await Notifications.getPermissionsAsync();
         let finalStatus = existingStatus;
 
@@ -214,7 +236,7 @@ export class NotificationService {
                     priority: Notifications.AndroidNotificationPriority.HIGH,
                     data: { genre: 'changement_edt' },
                 },
-                trigger: null,
+                trigger: Platform.OS === 'android' ? { channelId: 'default' } as any : null,
             });
         } catch (error) {
             console.error('Erreur lors de la notification de changement :', error);
