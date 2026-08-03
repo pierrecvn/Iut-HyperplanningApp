@@ -2,6 +2,14 @@
 	"extends": "expo/tsconfig.base",
 	"compilerOptions": {
 		"strict": true,
+		// Déclaré explicitement pour que les globales de test (describe, it,
+		// expect) soient reconnues par tsc. L'inclusion automatique des @types
+		// ne les charge pas ici.
+		"types": [
+			"jest",
+			"node",
+			"react"
+		],
 		"paths": {
 			"@/*": [
 				"./*"
