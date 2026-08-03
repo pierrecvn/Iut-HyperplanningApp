@@ -117,7 +117,9 @@ export class NotificationService {
             name: 'Cours et changements',
             importance: Notifications.AndroidImportance.MAX,
             vibrationPattern: [0, 250, 250, 250],
-            sound: 'default',
+            // Pas de champ `sound` : expo-notifications interprète toute valeur
+            // comme un nom de fichier personnalisé à embarquer dans l'app.
+            // L'omettre laisse le son système par défaut.
         });
     }
 
