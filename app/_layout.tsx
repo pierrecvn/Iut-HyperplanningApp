@@ -59,12 +59,15 @@ const RootLayoutContent = () => {
     const [isMounted, setIsMounted] = useState(false);
     const [isAuthChecked, setIsAuthChecked] = useState(false);
     const { user, loading, checkUser } = useAuth();
-    const { allEvents } = useEdt();
+    // defaultGroupEvents et non allEvents : ce dernier est remplacé quand
+    // l'utilisateur consulte l'emploi du temps d'un autre groupe (preview),
+    // ce qui replanifiait ses rappels sur les cours de ce groupe-là.
+    const { defaultGroupEvents } = useEdt();
 
     // opti des notifications
     const shouldInitializeNotifications = useMemo(() => {
-        return !!user?.rappel && !!user?.group && allEvents.length > 0;
-    }, [user, allEvents]);
+        return !!user?.rappel && !!user?.group && defaultGroupEvents.length > 0;
+    }, [user, defaultGroupEvents]);
 
     const initializeNotifications = useCallback(async () => {
 
@@ -78,12 +81,12 @@ const RootLayoutContent = () => {
 
             if (permission) {
                 // console.log('Planification des notifications');
-                await NotificationService.planifierNotificationsEvents(allEvents, user?.rappel);
+                await NotificationService.planifierNotificationsEvents(defaultGroupEvents, user?.rappel);
             }
         } catch (error) {
             console.error('Erreur lors de l\'initialisation des notifications:', error);
         }
-    }, [shouldInitializeNotifications, allEvents, user]);
+    }, [shouldInitializeNotifications, defaultGroupEvents, user]);
 
     const notificationsInitialized = useRef(false);
 
