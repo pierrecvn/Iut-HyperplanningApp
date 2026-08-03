@@ -38,15 +38,11 @@ Sous edge-to-edge obligatoire, la version de `safe-area-context` gère mieux les
 
 Cette modale est liée à `selectedEvent` et au compteur de rafraîchissement à la seconde. L'extraire demande de décider qui possède quoi entre la liste et la modale — ce n'est pas du déplacement mécanique.
 
-## `ThemeContext` persiste un thème que personne n'a choisi
+## `toggleTheme` retombe sur le clair depuis le thème aléatoire
 
-`context/ThemeContext.tsx` enregistre le thème résolu à chaque changement, y compris celui du tout premier rendu — avant que l'effet qui relit le thème sauvegardé ait pu s'appliquer. Ce premier rendu vaut toujours le thème système.
+`context/ThemeContext.tsx` : depuis le mode aléatoire, l'interrupteur clair/sombre désactive l'aléatoire puis ne trouve aucun thème forcé à inverser — `forcedThemeName` est nul. Le thème résolu retombe alors sur le repli `'light'`.
 
-En marche normale c'est invisible : le rendu suivant écrit la bonne valeur par-dessus. Mais si l'application est interrompue entre les deux, une erreur de rendu suffit pour que la valeur système reste persistée et devienne le thème forcé aux démarrages suivants. Constaté le 2026-08-03 pendant la mise au point du clic du widget : le thème est passé de sombre à clair après un plantage de rendu, et y est resté.
-
-Deuxième anomalie au même endroit : `getTheme()` renvoie `'dark'` par défaut quand rien n'est stocké, donc la valeur lue est toujours vraie, donc `setIsSystemTheme(false)` s'exécute à chaque démarrage. L'application ne suit jamais le thème de l'appareil au lancement, malgré l'interrupteur « Theme système » des paramètres.
-
-Corriger demande de trancher qui fait autorité au démarrage entre le thème enregistré et le thème système — ce que le contexte ne décide pas aujourd'hui. Depuis que le widget suit le thème de l'application, l'anomalie se voit aussi sur l'écran d'accueil.
+Le résultat n'est pas absurde et rien ne casse, mais il est obtenu par accident plutôt que décidé. Le chemin est devenu plus atteignable depuis que le mode aléatoire survit aux redémarrages.
 
 ## Couverture de tests partielle
 

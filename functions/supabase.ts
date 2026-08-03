@@ -280,11 +280,16 @@ export const saveTheme = async (theme_name: string) => {
     }
 };
 
-// Récupération du statut du thème
-export const getTheme = (): String | null => {
+/**
+ * Choix de thème enregistré, ou null si l'utilisateur n'a jamais choisi.
+ *
+ * Renvoyait 'dark' faute de valeur, ce qui rendait le null impossible à
+ * distinguer d'un choix délibéré : l'appelant croyait toujours à un thème forcé
+ * et l'application ne suivait donc jamais celui de l'appareil.
+ */
+export const getTheme = (): string | null => {
     try {
-        const theme_name = storage.getString('theme_name_status');
-        return theme_name ? theme_name : 'dark';
+        return storage.getString('theme_name_status') ?? null;
     } catch (error) {
         console.error(`Erreur lors de la récupération du statut du thème : ${(error as Error).message}`);
         return null;
