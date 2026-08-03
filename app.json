@@ -39,6 +39,23 @@
           "resizeMode": "cover",
           "backgroundColor": "#FFECD1"
         }
+      ],
+      [
+        "react-native-android-widget",
+        {
+          "widgets": [
+            {
+              "name": "ProchainCours",
+              "label": "Prochain cours",
+              "minWidth": "180dp",
+              "minHeight": "110dp",
+              "targetCellWidth": 3,
+              "targetCellHeight": 2,
+              "description": "Affiche ton prochain cours",
+              "updatePeriodMillis": 1800000
+            }
+          ]
+        }
       ]
     ],
     "experiments": {
