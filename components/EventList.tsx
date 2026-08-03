@@ -1,5 +1,7 @@
 import Icon from '@/assets/images/noEvents.svg';
 import CustomModal from "@/components/CustomModal";
+import {EventCard} from '@/components/events/EventCard';
+import {PauseMidiCard} from '@/components/events/PauseMidiCard';
 import {useEdt} from '@/context/EdtContext';
 import {useTheme} from '@/context/ThemeContext';
 import {
@@ -10,7 +12,7 @@ import {
 } from '@/functions/eventFormat';
 import {useEventsAffichage} from '@/hooks/useEventsAffichage';
 import {ICalEvent} from '@/interfaces/IcalEvent';
-import {FontAwesome, Ionicons} from "@expo/vector-icons";
+import {Ionicons} from "@expo/vector-icons";
 import dayjs from 'dayjs';
 import 'dayjs/locale/fr';
 dayjs.locale('fr');
@@ -24,7 +26,6 @@ import {
 	TouchableOpacity,
 	View
 } from 'react-native';
-import {TouchableOpacity as GestureTouchableOpacity} from "react-native-gesture-handler";
 import {router} from "expo-router";
 
 interface EventListProps {
@@ -71,133 +72,13 @@ export default function EventList({nb = "all", estUnique = false, data}: EventLi
 		[theme.colors.primary, theme.colors.danger]
 	);
 
-	const renderBreak = (pauseMidi: any) => {
-		const breakDurationHours = Math.floor(pauseMidi.duration / 60);
-		const breakDurationMinutes = pauseMidi.duration % 60;
 
-		return (
-			<View
-				style={[
-					styles.breakCard,
-					{backgroundColor: theme.bg.alarme}
-				]}
-			>
-				<View style={styles.breakTimeColumn}>
-					<FontAwesome name={"cutlery"} size={24} color={theme.text.base}/>
-				</View>
-				<View style={styles.breakContentColumn}>
-					<Text style={[
-						styles.breakDurationText,
-						{color: theme.text.base}
-					]}>
-						Pause midi de {dayjs(pauseMidi.start).format('HH:mm')} à {dayjs(pauseMidi.end).format('HH:mm')}
-						{'\n'}
-						( {breakDurationHours > 0
-						? `${breakDurationHours}h${breakDurationMinutes > 0 ? ` ${breakDurationMinutes}min` : ''}`
-						: `${breakDurationMinutes}min`} )
-					</Text>
-				</View>
-			</View>
-		);
-	};
+	const renderEvent = useCallback(({item}: { item: ICalEvent | any }) => (
+		item.type === 'break'
+			? <PauseMidiCard pause={item}/>
+			: <EventCard event={item} onPress={setSelectedEvent}/>
+	), []);
 
-	const renderEvent = useCallback(({item}: { item: ICalEvent | any }) => {
-		if (item.type === 'break') {
-			return renderBreak(item);
-		}
-
-		const eventStatus = getEventStatus(item);
-		const {formatted: duration} = getEventDuration(item.start, item.end);
-		const cancelled = isCancelled(item);
-
-		return (
-			<GestureTouchableOpacity
-				onPress={() => setSelectedEvent(item)}
-				style={[
-					styles.eventCard,
-					{
-						shadowColor: theme.text.base,
-						backgroundColor: theme.bg.base
-					},
-					cancelled && styles.cancelledCard,
-				]}
-				activeOpacity={0.8}
-			>
-				<View style={[styles.statusBar, {backgroundColor: eventStatus.color}]}/>
-
-				<View style={styles.timeColumn}>
-					<Text style={[
-						styles.timeText,
-						{color: theme.text.base},
-						cancelled && styles.cancelledText
-					]}>
-						{dayjs(item.start).format('HH:mm')}
-					</Text>
-					<Text style={[
-						styles.timeText,
-						{color: theme.text.secondary},
-						cancelled && styles.cancelledText
-					]}>
-						{dayjs(item.end).format('HH:mm')}
-					</Text>
-					<Text style={[
-						styles.durationText,
-						{color: theme.text.secondary},
-						cancelled && styles.cancelledText
-					]}>
-						{duration}
-					</Text>
-				</View>
-
-				<View style={styles.contentColumn}>
-					<View style={styles.titleRow}>
-						{cancelled && (
-							<Ionicons
-								name="close-circle"
-								size={16}
-								color={theme.colors.danger}
-								style={styles.cancelIcon}
-							/>
-						)}
-						<Text
-							style={[
-								styles.eventTitle,
-								{color: theme.text.base},
-								cancelled && styles.cancelledText
-							]}
-							numberOfLines={1}
-						>
-							{cancelled ? item.summary.substring(15) : item.summary}
-						</Text>
-					</View>
-					<View style={styles.locationRow}>
-						<Ionicons
-							name="location-outline"
-							size={16}
-							color={cancelled ? theme.colors.danger : theme.text.secondary}
-						/>
-						<Text
-							style={[
-								styles.eventLocation,
-								{color: theme.text.secondary},
-								cancelled && styles.cancelledText
-							]}
-							numberOfLines={1}
-						>
-							{item.location}
-						</Text>
-					</View>
-					<Text style={[styles.statusText, {color: eventStatus.color}]}>
-						{eventStatus.timeText}
-					</Text>
-				</View>
-
-				{cancelled && (
-					<View style={[styles.cancelledOverlay, {borderColor: theme.colors.danger}]}/>
-				)}
-			</GestureTouchableOpacity>
-		);
-	}, [theme, getEventStatus]);
 
 	const renderModalContent = useCallback(() => {
 		if (!selectedEvent) return null;
@@ -394,7 +275,6 @@ const styles = StyleSheet.create({
 	container: {
 		flex: 1,
 		backgroundColor: 'transparent',
-		// padding: 16,
 	},
 	centered: {
 		flex: 1,
@@ -412,85 +292,9 @@ const styles = StyleSheet.create({
 		width: '100%',
 		paddingTop: 40,
 	},
-	eventCard: {
-		marginBottom: 16,
-		marginLeft: 16,
-		marginRight: 16,
-		borderRadius: 12,
-		overflow: 'hidden',
-		elevation: 2,
-		shadowOffset: {width: 0, height: 2},
-		shadowOpacity: 0.1,
-		shadowRadius: 4,
-		flexDirection: 'row',
-		position: 'relative',
-	},
-	cancelledCard: {
-		opacity: 0.8,
-	},
-	statusBar: {
-		width: 6,
-		height: '100%',
-		position: 'absolute',
-		left: 0,
-	},
-	timeColumn: {
-		paddingVertical: 12,
-		paddingHorizontal: 12,
-		justifyContent: 'center',
-		alignItems: 'center',
-		minWidth: 80,
-		marginLeft: 4,
-	},
-	timeText: {
-		fontSize: 15,
-		fontWeight: '600',
-	},
-	durationText: {
-		fontSize: 13,
-		marginTop: 2,
-	},
-	contentColumn: {
-		justifyContent: 'center',
-		gap: 4,
-	},
-	titleRow: {
-		flexDirection: 'row',
-		alignItems: 'center',
-	},
-	eventTitle: {
-		fontSize: 16,
-		fontWeight: 'bold',
-	},
-	locationRow: {
-		flexDirection: 'row',
-		alignItems: 'center',
-		gap: 4,
-	},
 	cancelledText: {
 		textDecorationLine: 'line-through',
 		textDecorationStyle: 'solid',
-	},
-	cancelledOverlay: {
-		position: 'absolute',
-		top: 0,
-		left: 0,
-		right: 0,
-		bottom: 0,
-		borderWidth: 2,
-		borderRadius: 12,
-		opacity: 0.5,
-	},
-	cancelIcon: {
-		marginRight: 8,
-	},
-	eventLocation: {
-		fontSize: 14,
-		flex: 1,
-	},
-	statusText: {
-		fontSize: 13,
-		fontWeight: '500',
 	},
 	modalContent: {
 		borderRadius: 12,
@@ -534,36 +338,6 @@ const styles = StyleSheet.create({
 		fontSize: 16,
 		textAlign: 'center',
 	},
-	breakCard: {
-		marginBottom: 16,
-		marginLeft: 16,
-		marginRight: 16,
-		borderRadius: 6,
-		flexDirection: 'row',
-		padding: 6,
-		alignItems: 'center',
-		elevation: 1,
-	},
-	breakTimeColumn: {
-		position: 'absolute',
-		justifyContent: 'center',
-		alignItems: 'center',
-		minWidth: 90
-	},
-	breakTimeText: {
-		fontSize: 15,
-		fontWeight: '600',
-	},
-	breakContentColumn: {
-		flex: 1,
-		marginLeft: 16,
-
-	},
-	breakDurationText: {
-		fontSize: 16,
-		fontWeight: '500',
-		textAlign: 'center',
-	},
 	nextDayButton: {
 		position: 'absolute',
 		bottom: 20,
@@ -573,12 +347,10 @@ const styles = StyleSheet.create({
 		paddingVertical: 10,
 		paddingHorizontal: 15,
 		borderRadius: 10,
-
 	},
 	nextDayButtonText: {
 		marginLeft: 8,
 		fontSize: 16,
 		fontWeight: '500',
 	}
-
 });
