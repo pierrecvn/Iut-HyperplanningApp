@@ -1,5 +1,8 @@
+import { ChangementEdt } from "@/functions/edtDiff";
 import { ICalEvent } from "@/interfaces/IcalEvent";
 import dayjs from "dayjs";
+import 'dayjs/locale/fr';
+import { Platform } from 'react-native';
 import * as BackgroundTask from 'expo-background-task';
 import * as Notifications from 'expo-notifications';
 import * as TaskManager from 'expo-task-manager';
@@ -32,6 +35,25 @@ const VERSION_CONFIG_TACHE = 2;
 const CLE_VERSION_CONFIG = 'background_task_config_version';
 
 const storage = createMMKV();
+
+/** Une ligne lisible par changement, destinée au corps de la notification. */
+function decrireChangement(c: ChangementEdt): string {
+    const quand = dayjs(c.event.start).format('ddd D MMM [à] HH:mm');
+    const titre = c.event.summary;
+
+    switch (c.type) {
+        case 'annule':
+            return `Annulé — ${titre} (${quand})`;
+        case 'supprime':
+            return `Retiré — ${titre} (${quand})`;
+        case 'ajoute':
+            return `Ajouté — ${titre} (${quand})`;
+        case 'deplace':
+            return `Déplacé — ${titre} : ${dayjs(c.avantStart).format('ddd D MMM HH:mm')} → ${quand}`;
+        case 'salle':
+            return `Salle — ${titre} (${quand}) : ${c.avantLocation} → ${c.event.location}`;
+    }
+}
 
 // Configuration des notifications avec des options robustes
 Notifications.setNotificationHandler({
@@ -80,7 +102,28 @@ export class NotificationService {
         }
     }
 
+    /**
+     * Crée le canal Android référencé par les rappels.
+     *
+     * planifierNotificationsEvents passe `channelId: 'default'` depuis
+     * toujours, sans qu'aucun canal de ce nom n'ait jamais été créé. Sur
+     * Android 8 et suivants, un canal inexistant peut faire disparaître la
+     * notification sans erreur. Sans effet sur les autres plateformes.
+     */
+    static async initCanalAndroid() {
+        if (Platform.OS !== 'android') return;
+
+        await Notifications.setNotificationChannelAsync('default', {
+            name: 'Cours et changements',
+            importance: Notifications.AndroidImportance.MAX,
+            vibrationPattern: [0, 250, 250, 250],
+            sound: 'default',
+        });
+    }
+
     static async initNotifications() {
+        await this.initCanalAndroid();
+
         const { status: existingStatus } = await Notifications.getPermissionsAsync();
         let finalStatus = existingStatus;
 
@@ -159,5 +202,44 @@ export class NotificationService {
 
     static async getNotificationsPlanifiees() {
         return await Notifications.getAllScheduledNotificationsAsync();
+    }
+
+    /**
+     * Notifie immédiatement les changements détectés dans l'emploi du temps.
+     *
+     * Volontairement envoyée hors du système de planification : celui-ci fait
+     * un cancelAllScheduledNotificationsAsync à chaque replanification des
+     * rappels, ce qui effacerait une notification de changement planifiée.
+     * Ici le déclencheur est `null`, donc la notification part tout de suite
+     * et n'entre jamais dans la file des rappels.
+     */
+    static async notifierChangements(changements: ChangementEdt[]) {
+        if (changements.length === 0) return;
+
+        try {
+            const titre = changements.length === 1
+                ? 'Ton emploi du temps a changé'
+                : `${changements.length} changements dans ton emploi du temps`;
+
+            // Au-delà de trois, le détail devient illisible dans une
+            // notification : on résume et l'utilisateur ouvre l'app.
+            const corps = changements.length <= 3
+                ? changements.map(decrireChangement).join('\n')
+                : changements.slice(0, 3).map(decrireChangement).join('\n')
+                    + `\net ${changements.length - 3} autre${changements.length - 3 > 1 ? 's' : ''}`;
+
+            await Notifications.scheduleNotificationAsync({
+                content: {
+                    title: titre,
+                    body: corps,
+                    sound: true,
+                    priority: Notifications.AndroidNotificationPriority.HIGH,
+                    data: { genre: 'changement_edt' },
+                },
+                trigger: Platform.OS === 'android' ? { channelId: 'default' } as any : null,
+            });
+        } catch (error) {
+            console.error('Erreur lors de la notification de changement :', error);
+        }
     }
 }
