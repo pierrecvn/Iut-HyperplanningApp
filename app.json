@@ -2,7 +2,7 @@
   "expo": {
     "name": "Iut-HyperplanningApp",
     "slug": "Iut-HyperplanningApp",
-    "version": "1.1.6",
+    "version": "1.2.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "iuthyperplanningapp",
@@ -33,11 +33,34 @@
       "@react-native-community/datetimepicker",
       "expo-web-browser",
       [
+        "expo-calendar",
+        {
+          "calendarPermission": "L'application écrit votre emploi du temps dans un calendrier dédié de votre appareil."
+        }
+      ],
+      [
         "expo-splash-screen",
         {
           "image": "./assets/images/splash.png",
           "resizeMode": "cover",
           "backgroundColor": "#FFECD1"
+        }
+      ],
+      [
+        "react-native-android-widget",
+        {
+          "widgets": [
+            {
+              "name": "ProchainCours",
+              "label": "Prochain cours",
+              "minWidth": "180dp",
+              "minHeight": "110dp",
+              "targetCellWidth": 3,
+              "targetCellHeight": 2,
+              "description": "Affiche ton prochain cours",
+              "updatePeriodMillis": 1800000
+            }
+          ]
         }
       ]
     ],

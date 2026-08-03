@@ -38,10 +38,16 @@ Sous edge-to-edge obligatoire, la version de `safe-area-context` gère mieux les
 
 Cette modale est liée à `selectedEvent` et au compteur de rafraîchissement à la seconde. L'extraire demande de décider qui possède quoi entre la liste et la modale — ce n'est pas du déplacement mécanique.
 
-## Absence de tests
+## `toggleTheme` retombe sur le clair depuis le thème aléatoire
 
-`jest` et `jest-expo` sont configurés, aucun test n'existe.
+`context/ThemeContext.tsx` : depuis le mode aléatoire, l'interrupteur clair/sombre désactive l'aléatoire puis ne trouve aucun thème forcé à inverser — `forcedThemeName` est nul. Le thème résolu retombe alors sur le repli `'light'`.
 
-`functions/eventFormat.ts` (4 fonctions pures) et `functions/groupDisplay.ts` ont été extraits pendant le chantier 3 précisément pour être testables sans rendu. C'est le point d'entrée naturel si on veut commencer une suite de tests.
+Le résultat n'est pas absurde et rien ne casse, mais il est obtenu par accident plutôt que décidé. Le chemin est devenu plus atteignable depuis que le mode aléatoire survit aux redémarrages.
+
+## Couverture de tests partielle
+
+`jest` et `jest-expo` sont configurés, 25 tests existent : `functions/edtDiff`, `functions/lienProfond`, `widgets/contenuCours`. Tous portent sur des fonctions pures.
+
+Rien n'est testé de ce qui touche MMKV — `widgetStore`, `widgetTheme`, `calendarService` — faute de double pour `react-native-mmkv`. `functions/eventFormat.ts` et `functions/groupDisplay.ts` avaient été extraits pour être testables sans rendu et ne le sont toujours pas.
 
 Voir aussi `docs/npm-audit.md` pour les 32 alertes npm, toutes cantonnées à l'outillage.

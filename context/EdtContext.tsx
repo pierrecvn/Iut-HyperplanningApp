@@ -5,6 +5,8 @@ import 'dayjs/locale/fr';
 import React, { createContext, ReactNode, useContext, useEffect, useState } from 'react';
 import { HyperplanningApi } from '@/functions/hyperplanning';
 import { CalendarService } from '@/functions/calendarService';
+import { enregistrerFenetreEvenements } from '@/functions/widgetStore';
+import { demanderMiseAJourWidget } from '@/functions/widgetRefresh';
 
 interface EdtContextType {
 	allEvents: ICalEvent[];
@@ -87,6 +89,21 @@ export const EdtProvider = ({ children }: EdtProviderProps) => {
             // On ne met à jour les événements par défaut (et donc les notifs) QUE si ce n'est pas une preview temporaire
             if (!isPreview) {
                 setDefaultGroupEvents(mergedEvents);
+
+                // Le widget lit une fenêtre persistée : il tourne hors de
+                // l'application et n'a accès à aucun état React. Comme les
+                // notifications, il ne doit voir que le groupe par défaut, pas
+                // une preview.
+                //
+                // Rien n'est écrit tant qu'aucun groupe n'est connu : le tout
+                // premier chargement a lieu avant que l'utilisateur soit
+                // résolu, et écraserait la fenêtre par une liste vide — le
+                // widget s'effacerait à chaque démarrage, et resterait vide si
+                // la session ne se rétablissait pas.
+                if (activeGroup) {
+                    enregistrerFenetreEvenements(mergedEvents);
+                    demanderMiseAJourWidget();
+                }
             }
 
 		} catch (err) {
